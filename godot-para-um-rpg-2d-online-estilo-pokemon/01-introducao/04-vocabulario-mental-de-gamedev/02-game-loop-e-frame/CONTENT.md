@@ -43,17 +43,17 @@ Essa separação existe porque física e colisão são matematicamente sensívei
 
 ```mermaid
 sequenceDiagram
-    participant Loop as Game Loop (Godot)
+    participant Engine as Game Loop (Godot)
     participant PP as _physics_process (60Hz fixo)
     participant P as _process (variável)
     participant R as Render
 
     loop A cada frame
-        Loop->>PP: tick físico (se tempo acumulado >= 1/60s)
-        PP-->>Loop: física, colisão, movimento autoritativo
-        Loop->>P: delta desde último frame
-        P-->>Loop: lógica de jogo, animações, input
-        Loop->>R: renderiza estado interpolado
+        Engine->>PP: tick físico (se tempo acumulado >= 1/60s)
+        PP-->>Engine: física, colisão, movimento autoritativo
+        Engine->>P: delta desde último frame
+        P-->>Engine: lógica de jogo, animações, input
+        Engine->>R: renderiza estado interpolado
     end
 ```
 
