@@ -2,57 +2,55 @@
 
 ![capa](cover.png)
 
-## O que é?
+"Estilo Pokémon Fire Red" só vira especificação útil quando deixa de ser memória afetiva e vira um inventário técnico fechado. O conceito anterior estabeleceu que o recorte precisa existir antes de qualquer decisão de engine. Este é o conteúdo desse recorte: as **mecânicas não-negociáveis**, o conjunto mínimo de sistemas sem os quais o jogo deixa de ser reconhecível como um Pokémon-like. Se qualquer uma delas cair, o recorte muda de gênero.
 
-"Estilo Pokémon Fire Red" só vira especificação útil quando deixa de ser memória afetiva e vira um inventário fechado de mecânicas. As **mecânicas não-negociáveis** são o conjunto mínimo de sistemas sem os quais o jogo não é mais reconhecível como um Pokémon-like — se qualquer um cair, o recorte muda de gênero. É o núcleo duro que depois vai guiar escolhas de engine, arquitetura e MVP.
+Cruzando a documentação técnica dos ROMs Gen III com as convenções estabelecidas do sub-gênero, esse núcleo fecha em seis sistemas. O teste de consistência para cada um é direto: _se eu remover este sistema, o protótipo ainda é reconhecível como Pokémon-like?_ Os seis sistemas que passam nesse filtro são:
 
-## Explicação técnica
+| Sistema | Requisito mínimo | Por que é não-negociável |
+|---|---|---|
+| Câmera top-down ortográfica | Projeção 2D sem perspectiva; sprite com 4 animações de caminhada (N/S/L/O) | Permite colisão por lookup em célula, em vez de física contínua com volumes |
+| Tilemap discretizado com atributos | Blocos 16×16 px compostos de tiles 8×8 px, em duas camadas (chão + elevada), cada tile com atributos comportamentais | Toda lógica de script de mapa (encontros, eventos, colisão) se apoia nos atributos do tile |
+| Movimento em grid, tile-a-tile, 4 direções | Passos discretos N/S/L/O; posição lógica sempre em (x, y) inteiro; interpolação visual entre tiles | Viabiliza `on_enter_tile(x, y)` como primitiva de gatilho — sem célula, encounters exigem colisão contínua |
+| NPCs interativos com diálogo scriptado | Entidade posicionada em tile fixo (ou patrulha); diálogo disparado por ação no tile adjacente | Base do loop de progressão: NPCs são o veículo de quests, eventos e flags de save |
+| Combate por turnos determinístico | Cena separada do overworld; ordem por Speed; dano pela fórmula Gen III com truncagem inteira | Garante resultados reproduzíveis e uma máquina de estados finita com transições bem definidas |
+| Party de até 6 criaturas + persistência | Save serializa party, inventário, posição, flags de NPCs e estado de eventos | Fundação do multiplayer: a persistência server-side é construída sobre esse modelo |
 
-Cruzando a documentação técnica dos ROMs Gen III com as convenções do sub-gênero Pokémon-like, o núcleo não-negociável se fecha em seis sistemas, cada um com requisitos concretos:
+Cada sistema tem requisitos concretos que precisam ser entendidos antes de qualquer linha de código — e eles são implementáveis de forma independente como subsistemas, mas semanticamente interdependentes na cadeia de gameplay.
 
-1. **Câmera top-down em projeção ortográfica.** O mundo é visto de cima, em 2D, sem perspectiva. Sprites do jogador e NPCs têm uma animação de caminhada por direção cardinal.
+**Câmera top-down em projeção ortográfica.** O mundo é visto de cima, em 2D, sem perspectiva. Sprites têm uma animação de caminhada por direção cardinal — quatro direções, quatro ciclos de frames. Não é uma escolha estética: a ortografia é o que permite que colisão, scripts e encontros sejam resolvidos por lookup em célula, em vez de física contínua com volumes de colisão.
 
-2. **Mundo construído sobre um tilemap discretizado.** No Fire Red o mundo é montado em *blocos* de 16×16 pixels (o tamanho do personagem), compostos por 2×2 *tiles* de 8×8. Tudo que aparece fora de batalha — árvores, casas, água, grama alta, portas, móveis — é tile. Cada tile carrega atributos (caminhável, bloqueante, "grama alta que dispara encontro", porta, etc.).
+**Mundo construído sobre um tilemap discretizado.** No Fire Red, o mundo é montado em blocos de 16×16 pixels (o tamanho exato do personagem), compostos por dois layers de 2×2 tiles de 8×8 — uma camada de chão e uma camada elevada (para objetos como árvores e sinalizações que ficam "à frente" do jogador). Tudo que aparece fora de batalha — árvores, casas, água, grama alta, portas, móveis — é tile. Cada tile carrega atributos comportamentais: caminhável, bloqueante, "grama alta que dispara encontro", porta que transiciona para outro mapa, tile de balcão que permite interação com NPC do outro lado, etc. Sem esse tilemap com atributos, a lógica de encontros e scripts de mapa não tem onde se apoiar.
 
-3. **Movimento em grid, tile-a-tile, nas quatro direções cardinais.** O jogador só caminha em passos discretos para Norte/Sul/Leste/Oeste — nunca diagonal, nunca parado entre tiles. Entre dois tiles a posição é interpolada visualmente para parecer contínua, mas o estado lógico é sempre "estou no tile (x, y)". Isso é o que faz colisão, encontros e scripts de mapa serem resolvíveis por *lookup* na célula atual, e não por física contínua.
+**Movimento em grid, tile-a-tile, nas quatro direções cardinais.** O jogador só caminha em passos discretos para Norte, Sul, Leste ou Oeste — nunca diagonal, nunca parado entre tiles. A posição do estado lógico é sempre "estou no tile (x, y)"; entre dois tiles, a posição visual é interpolada para parecer contínua, mas o motor decide colisão e gatilhos na célula de destino, antes de a animação terminar. Esse é o sistema que torna viável implementar encontros aleatórios na grama alta como `on_enter_tile(x, y)`: sem célula discreta, a lógica precisaria de colisão contínua contra polígonos — outro paradigma e outro conjunto de problemas.
 
-4. **NPCs interativos com diálogo scriptado.** Cada NPC é uma entidade posicionada num tile com uma máquina de estados simples (parado, patrulhando, virando, falando) e um script de texto indexado pelo cabeçalho do mapa. Apertar o botão de ação no tile adjacente (olhando para o NPC) dispara o script — que pode abrir uma caixa de diálogo, dar um item, iniciar um combate, ou alterar flags do save.
+**NPCs interativos com diálogo scriptado.** Cada NPC é uma entidade posicionada em um tile fixo (ou patrulhando entre tiles), com uma máquina de estados simples — parado, virando, caminhando, falando. Apertar o botão de ação no tile adjacente, com o sprite orientado em direção ao NPC, dispara o script indexado ao cabeçalho do mapa: pode abrir uma caixa de diálogo linear, dar um item, iniciar um combate de treinador, ou setar uma flag de progressão no save. A mecânica não-negociável é "NPCs interativos com diálogo"; a versão mínima é um NPC fixo que exibe uma linha de texto ao ser acionado. Branches, eventos encadeados e quests são elaboração — entram em capítulos posteriores sem quebrar o recorte.
 
-5. **Combate por turnos contra criaturas, com fórmula determinística.** A batalha é uma cena separada do overworld, entre um Pokémon seu e um inimigo. A ordem do turno é definida pela Speed; o dano segue a fórmula canônica do Gen III `Damage = ((((2·Level/5 + 2) · Atk · Power / Def) / 50) + 2) · STAB · TypeMultiplier · Random/100`. Modificadores de tipo (0×, 0.5×, 2×), críticos e efeitos de status formam a superfície tática.
+**Combate por turnos contra criaturas, com fórmula determinística.** A batalha é uma cena completamente separada do overworld. A ordem de cada turno é definida pela stat Speed; o dano segue a fórmula canônica do Gen III:
 
-6. **Party de até seis + mundo persistente entre sessões.** O jogador carrega consigo uma *party* de no máximo 6 criaturas, com PC boxes como armazenamento estendido (no Fire Red original, 14 boxes × 30 = 420 slots). O save serializa party, inventário, posição do jogador no mapa, flags de progressão, estado de NPCs movidos, eventos concluídos — tudo que, quando recarregado, devolve o jogador exatamente ao mundo em que ele parou.
+```
+Damage = floor( floor( floor(2·Level/5 + 2) · Atk · Power / Def ) / 50 + 2 )
+       × STAB × TypeMultiplier × Random(85..100)/100
+```
 
-Esses seis sistemas são independentes na implementação (cada um vira um subsistema), mas interdependentes na semântica: tile-a-tile viabiliza grama alta como gatilho; grama alta viabiliza combate; combate pressupõe party; party pressupõe persistência; persistência pressupõe NPCs e flags de mundo. Derrubar um quebra os outros.
+Todos os operandos intermediários são truncagem inteira (`floor`) — não há ponto flutuante no cálculo de dano. Isso tem consequência prática: o combate é completamente determinístico e reproduzível, o que facilita testes unitários e futuro anti-cheat no servidor. Modificadores de tipo (0×, 0.5×, 2×), acertos críticos e efeitos de status formam a superfície tática. O ponto a reter para a implementação: o combate é uma **máquina de estados finita** com transições bem definidas (aguardando input → executando animação → calculando resultado → verificando fim) — não um loop físico contínuo.
 
-## Exemplo concreto
+**Party de até seis criaturas mais mundo persistente entre sessões.** O jogador carrega consigo uma party de no máximo seis criaturas; o PC boxes funciona como armazenamento estendido. O save serializa party completa, inventário, posição no mapa, flags de progressão, estado de NPCs e eventos concluídos. Quando recarregado, o jogador retorna exatamente ao mundo em que parou — não a um ponto de save manual, mas ao estado preciso do mundo. No contexto deste livro, "mundo persistente" vai além do single-player: é a fundação sobre a qual a persistência server-side do multiplayer será construída.
 
-O teste de decisão é curto: **se eu remover esse sistema, o protótipo ainda é reconhecível como Pokémon-like?**
+A interdependência entre os seis é a parte que mais importa entender antes de implementar qualquer subsistema. O movimento tile-a-tile viabiliza a grama alta como gatilho de encounter; a grama alta viabiliza o combate randômico; o combate pressupõe party; a party pressupõe persistência; a persistência pressupõe flags de NPCs e estado de mundo. Derrubar qualquer um enfraquece os outros. O teste de consistência revela isso com clareza: trocar movimento em grid por movimento analógico livre (como em A Link to the Past) mantém sprites, câmera e combate intactos — mas inviabiliza encounters por célula, colisão por lookup e scripts de mapa por posição discreta. O jogo deixa de ser um Pokémon-like e vira um Action RPG. É outro gênero.
 
-Comece por um caso óbvio: trocar o movimento em grid por movimento analógico livre (como Zelda: A Link to the Past). O mapa continua top-down, os sprites continuam pixel-art, o combate por turnos continua intacto. Mas na hora de perguntar *"o jogador entrou na grama alta?"* não há mais célula: é preciso testar colisão contínua contra polígonos, os encontros passam a depender de tempo gasto sobreposto ao tile, e scripts de mapa que antes eram `on_enter_tile(x, y)` viram `on_overlap(trigger_area)`. O jogo deixa de ser um Pokémon-like e vira um Action RPG — é outro gênero.
-
-Um caso mais sutil: manter tudo exceto a party, permitindo apenas uma criatura por vez. O combate sobrevive, a exploração sobrevive, os NPCs sobrevivem. Mas o loop de progressão desaparece: sem troca em batalha, sem gerenciar quem está ferido vs. quem está descansando, sem vantagens de tipo compostas entre seis slots, a curva tática colapsa para "escolha uma criatura, suba de nível". O jogo passa a lembrar mais um Digimon World do que um Pokémon.
-
-Caso-limite, útil para o MVP deste livro: **é aceitável começar com *uma árvore de diálogo trivial* em vez de um sistema completo de scripting de NPC?** Sim — a mecânica não-negociável é "NPCs interativos com diálogo", não "sistema de scripting com branches e flags". Versão mínima: NPC fixo no tile, ao interagir exibe uma linha de texto. Suficiente para o recorte fechar. Branches, eventos e quests são *elaboração* — entram em capítulos posteriores sem quebrar o recorte.
-
-Esse é o uso prático do inventário: contra cada ideia de feature, perguntar "essencial ou elaboração?". Essencial entra no MVP; elaboração fica na lista de capítulos futuros.
-
-## Síntese
-
-As seis mecânicas não-negociáveis — top-down, tilemap, movimento em grid, NPCs com diálogo, combate por turnos e party + persistência — formam a definição operacional de "Pokémon Fire Red-like" para este livro. Elas convertem uma referência cultural em um checklist técnico, e esse checklist é o que torna concreta a [fronteira do MVP](../04-a-fronteira-concreta-do-mvp-deste-projeto/CONTENT.md) no próximo conceito e o que justifica, mais adiante, a escolha de uma engine com `TileMapLayer`, `Camera2D` e sistema de cenas de primeira classe. É também o filtro que protege o projeto de morrer: tudo que não serve a um desses seis sistemas é [explicitamente excluído](../05-o-que-fica-de-fora-do-mvp-e-por-que/CONTENT.md) do escopo.
+É esse inventário — top-down ortográfico, tilemap com atributos, movimento em grid, NPCs com diálogo, combate por turnos determinístico e party com persistência — que converte "estilo Pokémon Fire Red" de referência cultural em checklist técnico. A pergunta "isso é essencial ou elaboração?" respondida contra esse checklist é o filtro que vai determinar o que entra no MVP do próximo conceito e o que fica explicitamente de fora.
 
 ## Fontes utilizadas
 
 - [Pokémon FireRed and LeafGreen Versions — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_FireRed_and_LeafGreen_Versions)
-- [Pokémon FireRed / LeafGreen Tileset Overview — Pokecommunity](https://www.pokecommunity.com/threads/pok%C3%A9mon-r-s-fr-lg-tileset-overview-in-advancemap.82500/)
 - [Damage — Bulbapedia (fórmula canônica de dano Gen III)](https://bulbapedia.bulbagarden.net/wiki/Damage)
-- [Damage calculation — GameFAQs (Pokémon Red/Fire Red)](https://gamefaqs.gamespot.com/gameboy/367023-pokemon-red-version/faqs/64175/damage-calculation)
-- [Battle Mechanics — The Cave of Dragonflies](https://www.dragonflycave.com/mechanics/battle/)
-- [Pokémon Storage System — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Storage_System)
-- [PC — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/PC)
 - [Save data structure (Generation III) — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Save_data_structure_(Generation_III))
-- [How to implement Top-down Grid Movement in Godot — Sandro Maglione](https://www.sandromaglione.com/articles/top-down-grid-movement-in-godot-game-engine)
-- [Finite State Machine for Turn-Based Games — GameDev.net](https://gamedev.net/blogs/entry/2274204-finite-state-machine-for-turn-based-games/)
+- [Pokémon data structure (Generation III) — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_data_structure_(Generation_III))
 - [Creating a game-size world map of Pokémon Fire Red — Medium](https://medium.com/@mmmulani/creating-a-game-size-world-map-of-pok%C3%A9mon-fire-red-614da729476a)
+- [Pokémon Red and Blue/Notes — Data Crystal (estrutura de tiles e atributos)](https://datacrystal.tcrf.net/wiki/Pok%C3%A9mon_Red_and_Blue/Notes)
+- [Pokémon Storage System — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Storage_System)
+- [Battle Mechanics — The Cave of Dragonflies](https://www.dragonflycave.com/mechanics/battle/)
+- [Top-down Grid Movement in Godot — Sandro Maglione](https://www.sandromaglione.com/articles/top-down-grid-movement-in-godot-game-engine)
 
 ---
 

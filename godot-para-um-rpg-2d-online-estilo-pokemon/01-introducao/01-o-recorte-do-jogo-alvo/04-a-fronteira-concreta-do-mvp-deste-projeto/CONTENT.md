@@ -2,63 +2,52 @@
 
 ![capa](cover.png)
 
-## O que é?
+Os dois conceitos anteriores construíram o instrumento: o inventário dos seis sistemas não-negociáveis de um Pokémon-like e a definição operacional de MVP jogável — a menor versão que fecha o core loop de ponta a ponta. Este conceito aplica esse instrumento. "Estilo Pokémon Fire Red online" é uma referência cultural; a fronteira concreta do MVP é a tradução dessa referência em afirmações testáveis — critérios que dizem, sem ambiguidade, quando o protótipo está pronto o suficiente para o livro terminar.
 
-"Estilo Pokémon Fire Red online" ainda é vago demais para virar backlog. A fronteira concreta do MVP deste projeto é a tradução desse recorte em três entregáveis verificáveis — **mapa navegável em grid**, **combate por turnos funcional** e **dois clientes vendo o mesmo mundo** — com critérios de aceitação explícitos que dizem, sem ambiguidade, quando o protótipo está "pronto o suficiente" para o livro terminar.
+O MVP deste projeto se sustenta em **três pilares**, cada um com um critério de aceitação binário: funciona ou não funciona, sem meio-termo.
 
-## Explicação técnica
+| Pilar | Critério de aceitação |
+|---|---|
+| Mapa navegável em grid | `TileMapLayer` com colisão, personagem movendo tile a tile com interpolação, pelo menos um NPC com diálogo |
+| Combate por turnos funcional | Transição overworld → batalha, state machine com ações/dano/vitória, retorno ao mapa |
+| Dois clientes vendo o mesmo mundo | Servidor headless autoritativo, dois clientes conectados via ENet/WebSocket vendo e sincronizando avatares |
 
-Enquanto o conceito genérico de MVP jogável (subcapítulo anterior) define *o formato* — "um loop central funcionando ponta a ponta" —, a fronteira concreta é *a instância específica* desse formato para este projeto. Ela se materializa como um pequeno conjunto de afirmações testáveis, no mesmo espírito de *acceptance criteria* de uma user story, só que aplicadas a um protótipo de jogo. O padrão é o do **walking skeleton**: uma implementação fina que atravessa verticalmente todas as camadas da arquitetura (cliente, rede, servidor, persistência) com funcionalidade mínima em cada uma, de modo que o sistema inteiro já "anda" antes de qualquer camada ficar profunda.
+O primeiro pilar é um **mapa navegável em grid**: um único mapa — uma cidade pequena com uma rota curta — construído com `TileMapLayer`, com camadas de colisão funcionando, personagem do jogador se movendo tile a tile com interpolação visual, e pelo menos um NPC com caixa de diálogo disparada por interação. Não é "o mundo de Kanto"; é um mapa que prova que a engine de mapas, o movimento em grid e a interação básica fecham o ciclo.
 
-Para este livro, a fronteira é composta por três pilares não-negociáveis:
-
-1. **Mapa navegável em grid.** Um único mapa (uma cidade pequena + uma rota curta, por exemplo) construído com `TileMapLayer`, com camadas de colisão funcionando, personagem do jogador se movendo **tile a tile** com interpolação visual, e pelo menos um NPC com caixa de diálogo disparada por interação. Não é "o mundo de Kanto". É *um* mapa que prova que a engine de mapas, movimento em grid e interação básica fecham o ciclo.
-
-2. **Combate por turnos funcional.** Transição do mundo para uma cena de batalha disparada por um gatilho (NPC ou grama alta simulada), uma *state machine* de combate com pelo menos os estados "selecionar ação → executar → resolver dano → checar vitória", HP decrescendo, e retorno ao mundo quando a batalha termina. Um movimento, um oponente, fórmula de dano simples — o que importa é o loop fechado.
-
-3. **Dois clientes vendo o mesmo mundo.** Um servidor dedicado rodando em modo headless, dois clientes Godot conectando via ENet ou WebSocket, ambos renderizando o mesmo mapa e vendo o avatar do outro jogador mover-se em tempo real. O servidor é autoritativo sobre posição; a persistência pode ser mínima (um JSON no disco do servidor salvando posição do último jogador conectado).
-
-Cada pilar vem com um **critério de aceitação binário** — funciona ou não funciona, sem meio-termo. A fronteira é *inclusiva* nesses três e *exclusiva* em todo o resto: captura, evolução, tabela de tipos completa, múltiplos mapas encadeados, inventário rico, economia, trocas entre jogadores, PvP, anti-cheat sofisticado — tudo isso mora do lado de fora da linha. O subcapítulo seguinte ("O que fica de fora e por que") explicita essas exclusões; aqui, o que importa é a **linha de dentro**.
-
-## Exemplo concreto
-
-Imagine a sessão de teste que valida o MVP ao fim do livro. O engenheiro abre dois terminais:
+O segundo pilar é o **combate por turnos funcional**: a transição do overworld para uma cena de batalha — disparada por um NPC ou por um tile de grama alta —, uma state machine com pelo menos os estados listados abaixo, HP decrescendo e retorno ao mapa quando a batalha termina.
 
 ```
-# terminal 1 — servidor
-godot4 --headless --path ./server server.tscn
-
-# terminal 2 — cliente A
-godot4 --path ./client client.tscn -- --server=localhost --user=alice
-
-# terminal 3 — cliente B
-godot4 --path ./client client.tscn -- --server=localhost --user=bob
+aguardando input
+  → executando animação
+    → calculando resultado (fórmula de dano, truncagem inteira)
+      → verificando fim (HP ≤ 0 → vitória/derrota)
+        → retornando ao overworld
 ```
 
-**Pilar 3 — dois clientes no mesmo mundo.** Alice conecta, spawna no centro do mapa. Bob conecta dez segundos depois. No monitor de Alice, aparece um segundo sprite (Bob) se movendo. No monitor de Bob, o mesmo — Alice visível como outro jogador. Alice anda três tiles para o norte; na tela do Bob, Alice desliza tile a tile, com o mesmo timing. Fecha Alice, reabre — ela reaparece na última posição salva pelo servidor. **Critério bate: sim, o servidor é autoritativo e há persistência mínima.**
+Um movimento, um oponente, fórmula de dano simples: o que importa é o loop fechado, não o balanceamento.
 
-**Pilar 1 — mapa navegável.** Alice caminha até um NPC na entrada da casa. Pressiona `E`. Abre uma caixa de diálogo: *"Olá, treinador! Cuidado com o mato ali."* Alice fecha o diálogo, tenta atravessar um pedaço de água — o movimento é bloqueado pela camada de colisão. **Critério bate: grid + colisão + NPC + diálogo fecham.**
+O terceiro pilar é **dois clientes vendo o mesmo mundo**: um servidor dedicado rodando em modo headless, dois clientes Godot conectando via ENet ou WebSocket, ambos renderizando o mesmo mapa e vendo o avatar do outro se mover em tempo real. O servidor é autoritativo sobre posição; a persistência pode ser mínima — um JSON no disco do servidor salvando a posição do último jogador conectado é suficiente para cumprir o critério.
 
-**Pilar 2 — combate funcional.** Alice entra num tile específico marcado como gatilho. A tela faz fade, entra a cena de batalha: sprite do adversário à direita, HP bar, menu *"Atacar / Fugir"*. Alice ataca; dano é calculado (nível × 2 + aleatório 1–5, digamos), HP do oponente cai de 20 para 14. O oponente ataca de volta. Loop continua até HP zerar. Fade de volta ao mundo, na mesma posição onde Alice estava. Enquanto isso, no cliente do Bob, Alice **não** aparece (ela está em uma cena de batalha local, sem replicação de combate — deliberadamente fora do escopo). **Critério bate: batalha funciona, o escopo da rede não foi inflado desnecessariamente.**
+A estrutura dos três pilares segue o padrão do **walking skeleton**: uma implementação fina que atravessa verticalmente todas as camadas da arquitetura — cliente, rede, servidor, persistência — com funcionalidade mínima em cada uma, de modo que o sistema inteiro "anda" antes de qualquer camada ficar profunda. A diferença do walking skeleton genérico para este projeto é que aqui há três esqueletos — um por pilar — e todos os três precisam estar de pé para o MVP ser declarado completo.
 
-Tudo que o engenheiro observar *além* disso — se a fórmula de dano é balanceada, se o mapa é bonito, se tem música — é bônus. Nada disso é necessário para declarar o MVP entregue. Por outro lado, se qualquer um dos três pilares quebrar (ex: os dois clientes se veem mas os movimentos estão dessincronizados por 2 segundos), o MVP **não está pronto**, por mais polido que o resto esteja.
+A fronteira é inclusiva nesses três e **exclusiva em tudo o mais**. Captura de criaturas, evolução, tabela de tipos completa, múltiplos mapas encadeados com transições, inventário rico, economia, trocas entre jogadores, PvP, anti-cheat sofisticado — tudo isso mora do lado de fora da linha. Essa exclusão não é postergação descuidada; é o mesmo recorte deliberado que o primeiro conceito deste subcapítulo defendeu. Um recorte escrito com "o que fica de fora" é a defesa concreta contra scope creep: quando a tentação de adicionar o sistema de tipos aparece no mês dois, ela bate na fronteira em vez de entrar silenciosamente no backlog.
 
-## Síntese
+Há um detalhe importante no terceiro pilar que vale nomear: o combate por turnos, no MVP, é **local** — ocorre na cena de batalha de um único cliente, sem replicação para o servidor ou para o outro jogador. Isso é uma exclusão intencional, não um descuido. Replicar combate em tempo real exige autoridade de estado compartilhado, sincronização de aleatoriedade e tratamento de desconexão no meio da batalha — problemas não-triviais que pertencem a uma fase posterior. O MVP prova que a rede funciona para o overworld; o combate online é pós-MVP.
 
-A fronteira concreta do MVP transforma o recorte cultural ("Pokémon Fire Red online") em três critérios binários — mapa navegável, combate por turnos, dois clientes sincronizados — cuja soma prova que o *walking skeleton* do projeto está de pé. É ela que amarra as mecânicas não-negociáveis do subcapítulo anterior à trilha incremental do seguinte: cada um dos quatro blocos da trilha existe, no fundo, para entregar um pedaço verificável dessa fronteira, e tudo que fica do lado de fora (captura, evolução, tipos completos) está lá justamente para não contaminar o que está do lado de dentro.
+Para tornar a fronteira concreta, vale a sessão de teste imaginária que valida o MVP ao fim do livro: três terminais abertos — servidor, cliente A, cliente B. O cliente A (Alice) conecta, spawna no centro do mapa. O cliente B (Bob) conecta dez segundos depois e o sprite de Alice aparece na tela de Bob se movendo. Alice anda três tiles para o norte; na tela de Bob, Alice desliza tile a tile, com o mesmo timing. Alice caminha até um NPC, pressiona `E`, lê o diálogo, tenta atravessar água — o movimento é bloqueado. Alice entra num tile de grama alta, fade, tela de batalha: sprite do adversário, HP bar, menu de ação, dano calculado, HP decresce, retorno ao overworld. Do lado de Bob, Alice simplesmente desapareceu do mapa por um instante e reapareceu — o combate foi local, deliberadamente. Se tudo isso acontece, os três pilares batem. Se qualquer um quebra — por exemplo, os dois clientes se veem mas os movimentos dessincronizam por dois segundos —, o MVP não está pronto, por mais polido que o resto esteja.
+
+Essa fronteira é o ponto de chegada que amarra todo o subcapítulo. O inventário de mecânicas não-negociáveis descreveu os seis sistemas; a definição de MVP jogável forneceu o critério de corte; a fronteira concreta aplica esse corte a este projeto específico. O próximo conceito explicita o lado de fora da linha — o que fica de fora e por que — fechando o mapa completo do recorte antes de o livro entrar em qualquer implementação.
 
 ## Fontes utilizadas
 
-- [What is an MVP? Starting Game Production (Tiny Colony)](https://medium.com/@TinyColonyGame/what-is-an-mvp-starting-game-production-40f5a552856d)
-- [Game Dev Glossary: Prototype, Vertical Slice, First Playable, MVP, Demo (askagamedev)](https://www.tumblr.com/askagamedev/746300998961741824/game-dev-glossary-prototype-vertical-slice)
-- [Vertical Slice vs MVP (Tiny Hydra)](https://tinyhydra.com/vertical-slice-vs-mvp/)
-- [Walking Skeleton — Smartpedia](https://t2informatik.de/en/smartpedia/walking-skeleton/)
-- [Prototypes, proofs of concept, walking skeletons and MVPs (tinnedfruit)](https://tinnedfruit.com/list/20180813)
-- [Essential Scope Rules for Successful Solo Game Dev (Wayline)](https://www.wayline.io/blog/essential-scope-rules-solo-game-dev)
-- [Multiplayer in Godot 4.0: Scene Replication (Godot blog)](https://godotengine.org/article/multiplayer-in-godot-4-0-scene-replication/)
+- [What is a Walking Skeleton? — Smartpedia (t2informatik)](https://t2informatik.de/en/smartpedia/walking-skeleton/)
+- [Walking Skeleton in Software Architecture — Medium](https://medium.com/@jorisvdaalsvoort/walking-skeletons-in-software-architecture-894168276e3f)
+- [What is an MVP? Starting Game Production — Tiny Colony](https://medium.com/@TinyColonyGame/what-is-an-mvp-starting-game-production-40f5a552856d)
+- [Game Dev Glossary: Prototype, Vertical Slice, First Playable, MVP, Demo — @askagamedev](https://www.tumblr.com/askagamedev/746300998961741824/game-dev-glossary-prototype-vertical-slice)
+- [Minimum Viable Product: What Does MVP in Gaming Mean? — Game Designing](https://gamedesigning.org/career/mvp/)
 - [High-level multiplayer — Godot Engine documentation](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
-- [GameDrivenDesign/godot-multiplayer-template (GitHub)](https://github.com/GameDrivenDesign/godot-multiplayer-template)
-- [Minimum Viable Product: What Does MVP in Gaming Mean? (Game Designing)](https://gamedesigning.org/career/mvp/)
+- [Multiplayer in Godot 4.0: Scene Replication — Godot blog](https://godotengine.org/article/multiplayer-in-godot-4-0-scene-replication/)
+- [Essential Scope Rules for Successful Solo Game Dev — Wayline](https://www.wayline.io/blog/essential-scope-rules-solo-game-dev)
 
 ---
 
