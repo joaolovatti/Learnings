@@ -16,6 +16,14 @@ Os blocos deste subcapítulo são: (1) **bloco 1 — fundamentos da engine (cap�
 
 Ao terminar, o leitor terá um mapa mental dos 14 capítulos restantes organizado em 4 blocos com função clara, saberá em que capítulo cada peça do jogo-alvo é construída, e entenderá por que essa ordem específica reduz retrabalho. Ficará apto a entrar no subcapítulo final — o setup do Godot — com a consciência exata de qual é o próximo passo concreto na trilha.
 
+## Conceitos
+
+1. [Bloco 1 — Fundamentos da Engine (capítulos 2 a 5)](01-bloco-1-fundamentos-da-engine/CONTENT.md) — o que cobre e por que é o investimento conceitual sem o qual nenhuma mecânica de jogo faz sentido.
+2. [Bloco 2 — Sistemas Pokémon-like Single-Player (capítulos 6 a 11)](02-bloco-2-sistemas-pokemon-like-single-player/CONTENT.md) — tilemaps, movimento em grid, câmeras, NPCs, combate, party e persistência local; o jogo single-player completo como pré-requisito honesto do online.
+3. [Bloco 3 — A Camada Online (capítulos 12 a 14)](03-bloco-3-a-camada-online/CONTENT.md) — arquitetura cliente-servidor, sincronização autoritativa e persistência server-side.
+4. [Bloco 4 — Pipeline de Assets com AI (capítulo 15)](04-bloco-4-pipeline-de-assets-com-ai/CONTENT.md) — integração do fluxo generativo (sprites, tilesets, trilha sonora) ao projeto Godot, fechando a ponte com os demais livros do método.
+5. [A Lógica das Dependências entre Blocos](05-a-logica-das-dependencias-entre-blocos/CONTENT.md) — por que essa ordem específica reduz retrabalho e o que acontece quando se tenta inverter a sequência.
+
 ## Fontes utilizadas
 
 - [Game Development Roadmap 2026 (Codelivly)](https://codelivly.com/game-development-roadmap/)

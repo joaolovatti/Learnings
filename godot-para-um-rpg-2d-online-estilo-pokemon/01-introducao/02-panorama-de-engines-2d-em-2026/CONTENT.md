@@ -16,6 +16,15 @@ Os blocos deste subcapítulo são: (1) **Unity** — a engine generalista de mer
 
 Ao terminar, o leitor terá um mapa mental claro das principais engines 2D disponíveis em 2026, com os pontos fortes e fracos de cada uma especificamente sob a lente de um RPG top-down em rede. Estará apto a defender a eliminação de cada alternativa para este caso e a entrar no subcapítulo seguinte — onde Godot 4 é fundamentado como a escolha — sem a sensação de que algo viável ficou de fora sem análise.
 
+## Conceitos
+
+1. [O Critério de Avaliação Antes da Lista](01-o-criterio-de-avaliacao-antes-da-lista/CONTENT.md) — por que engines só se comparam de forma útil contra um alvo concreto; as dimensões de comparação aplicadas ao jogo-alvo.
+2. [Unity — a Engine Generalista de Mercado](02-unity-a-engine-generalista-de-mercado/CONTENT.md) — força em mobile e ecossistema de assets, 2D bolt-on sobre pipeline 3D e modelo de licenciamento pós-controvérsia do Runtime Fee.
+3. [Phaser — o Framework JavaScript para Web](03-phaser-o-framework-javascript-para-web/CONTENT.md) — arquitetura de framework (não engine), deploy direto no browser, ausência de editor visual e de multiplayer nativo robusto.
+4. [GameMaker, Defold e Construct — Engines de Nicho 2D](04-gamemaker-defold-e-construct-engines-de-nicho-2d/CONTENT.md) — apostas diferentes (GML, Lua, no-code), boas para projetos focados, mas com tetos de complexidade e limitações de multiplayer.
+5. [Unreal — Overkill Consciente](05-unreal-overkill-consciente/CONTENT.md) — por que uma engine 3D AAA é descartável para um RPG top-down 2D: footprint, curva de aprendizado e ausência de ganho real no alvo.
+6. [O Mapa de Trade-offs Consolidado](06-o-mapa-de-trade-offs-consolidado/CONTENT.md) — leitura cruzada de todas as engines pelas dimensões definidas; identifica o buraco que as alternativas deixam e motiva o próximo subcapítulo.
+
 ## Fontes utilizadas
 
 - [Phaser vs Godot for 2D Games: Complete Comparison (Generalist Programmer)](https://generalistprogrammer.com/tutorials/phaser-vs-godot-2d-games)

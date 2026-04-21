@@ -16,6 +16,15 @@ Os blocos deste subcapítulo são: (1) **engine** — o que distingue uma engine
 
 Ao terminar, o leitor terá os cinco termos fundadores do livro — engine, game loop, scene, node, signal — calibrados num primeiro nível, com paralelos claros aos modelos mentais que ele já tem de mobile e sistemas distribuídos. A partir daqui, os capítulos seguintes podem usar esses termos sem definição prévia, e o leitor terá um gancho mental para receber o aprofundamento de cada conceito no momento em que ele aparecer (Capítulos 2, 3 e 4 destrinchando nodes/scenes, game loop e signals/GDScript respectivamente).
 
+## Conceitos
+
+1. [Engine vs. Library vs. Framework](01-engine-vs-library-vs-framework/CONTENT.md) — o que distingue uma engine de uma biblioteca: quem controla o loop principal e por que a engine é simultaneamente runtime, IDE, build pipeline e asset manager.
+2. [Game Loop e Frame](02-game-loop-e-frame/CONTENT.md) — o ciclo contínuo de input → update → render, o que é um frame e FPS, e por que difere radicalmente do modelo de eventos discretos de aplicativos mobile.
+3. [Delta Time](03-delta-time/CONTENT.md) — por que o tempo decorrido entre frames precisa calibrar todo movimento e lógica, garantindo comportamento frame-rate-independent.
+4. [Node e Scene no Godot](04-node-e-scene-no-godot/CONTENT.md) — node como unidade atômica de comportamento, scene como árvore hierárquica de nodes, e por que "scene" no Godot não é sinônimo de "fase".
+5. [Signal](05-signal/CONTENT.md) — o mecanismo desacoplado de comunicação entre nodes, em paralelo com pub/sub e callbacks, e a regra "call down, signal up".
+6. [Autoridade, Tick Rate e Sincronização (primeira visão)](06-autoridade-tick-rate-e-sincronizacao-primeira-visao/CONTENT.md) — vocabulário multiplayer inicial: quem é dono do estado, a que frequência o servidor processa ticks e o que significa sincronizar estado, conectado ao modelo mental de sistemas distribuídos.
+
 ## Fontes utilizadas
 
 - [Godot Engine — Nodes and Scenes (documentação oficial)](https://docs.godotengine.org/en/stable/getting_started/step_by_step/nodes_and_scenes.html)

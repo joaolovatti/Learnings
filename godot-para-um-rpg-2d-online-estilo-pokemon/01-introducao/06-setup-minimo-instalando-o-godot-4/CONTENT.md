@@ -16,6 +16,15 @@ Os blocos deste subcapítulo são: (1) **download e instalação** — como pega
 
 Ao terminar, o leitor terá o Godot 4 instalado e funcional, um projeto vazio criado no disco, terá experimentado o ciclo abrir-editar-salvar-rodar pelo menos uma vez, e estará familiarizado com a anatomia básica do editor. A barreira de entrada para os capítulos seguintes — onde o livro entra de fato em nodes, scenes e scripts — fica reduzida a zero: o capítulo 2 começa com o editor já aberto.
 
+## Conceitos
+
+1. [Download e Portabilidade do Binário Godot 4](01-download-e-portabilidade-do-binario-godot-4/CONTENT.md) — por que o editor é um único executável portátil de ~120MB, sem instalador, e como baixar a versão estável correta no site oficial.
+2. [Project Manager: Criando e Organizando Projetos](02-project-manager-criando-e-organizando-projetos/CONTENT.md) — o que é o Project Manager, como criar um novo projeto com nome e diretório adequados, e o que a estrutura de diretórios gerada significa.
+3. [Escolha do Renderer: Forward+, Mobile ou Compatibility](03-escolha-do-renderer-forward-mobile-ou-compatibility/CONTENT.md) — o que cada renderer oferece, por que o Forward+ (Vulkan) é recomendado para um RPG 2D neste contexto, e quando Compatibility é a alternativa correta.
+4. [Anatomia do Editor Godot 4](04-anatomia-do-editor-godot-4/CONTENT.md) — as quatro regiões principais (Scene/FileSystem dock, viewport central, Inspector, Output/Debugger), o que cada uma faz e quando o leitor vai interagir com cada uma.
+5. [O Primeiro Ciclo: Cena, Save e Run](05-o-primeiro-ciclo-cena-save-e-run/CONTENT.md) — adicionar um Node2D vazio, salvar a cena como `main.tscn`, rodar com F5, entender a janela preta como vitória, e o que o ciclo abrir-editar-salvar-rodar significa na prática.
+6. [Atalhos e Rituais de Produtividade do Editor](06-atalhos-e-rituais-de-produtividade-do-editor/CONTENT.md) — F5 vs. F6, como reabrir o projeto, e o que esperar (e não esperar) na primeira execução de um projeto vazio.
+
 ## Fontes utilizadas
 
 - [Godot Engine — site oficial (download)](https://godotengine.org/download/)
