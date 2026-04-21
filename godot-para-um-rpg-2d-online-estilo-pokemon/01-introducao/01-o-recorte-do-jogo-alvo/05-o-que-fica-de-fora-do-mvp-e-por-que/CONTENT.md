@@ -54,3 +54,7 @@ O contra-escopo é o mecanismo que transforma "vontade de projeto solo" em "proj
 - [Pokémon Evolution Charts (Pokémon Database)](https://pokemondb.net/evolution)
 - [What is "Out of Scope" and How To Avoid Out of Scope Work (ScopeStack)](https://scopestack.io/blog/what-is-out-of-scope)
 - [In Scope vs. Out of Scope Meaning With Examples (Indeed)](https://www.indeed.com/hire/c/info/out-of-scope)
+
+---
+
+**Próximo conceito** → [O twist do online sobre um Pokémon single-player](../06-o-twist-do-online-sobre-um-pokemon-single-player/CONTENT.md)

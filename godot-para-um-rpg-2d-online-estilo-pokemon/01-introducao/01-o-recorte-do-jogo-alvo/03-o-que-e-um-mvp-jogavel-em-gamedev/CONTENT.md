@@ -50,3 +50,7 @@ Um MVP jogável é a menor versão do jogo que ainda fecha o **core loop** de po
 - [How to Build an MVP Game: A Step-by-Step Guide — The Mind Studios](https://games.themindstudios.com/post/how-to-build-an-mvp-game/)
 - [Scope Creep in Indie Games: How to Avoid Development Hell — Wayline](https://www.wayline.io/blog/scope-creep-indie-games-avoiding-development-hell)
 - [Designing The Core Gameplay Loop: A Beginner's Guide — Game Design Skills](https://gamedesignskills.com/game-design/core-loops-in-gameplay/)
+
+---
+
+**Próximo conceito** → [A fronteira concreta do MVP deste projeto](../04-a-fronteira-concreta-do-mvp-deste-projeto/CONTENT.md)

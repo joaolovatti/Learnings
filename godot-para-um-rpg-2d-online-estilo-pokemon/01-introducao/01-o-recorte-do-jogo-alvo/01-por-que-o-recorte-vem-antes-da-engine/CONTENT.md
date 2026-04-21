@@ -63,3 +63,7 @@ Decidir a engine antes do recorte é escolher a ferramenta antes de descrever a 
 - [Game design document (Wikipedia)](https://en.wikipedia.org/wiki/Game_design_document)
 - [The Best Way to Approach Game Development as a Solo Indie Dev (Stackademic)](https://blog.stackademic.com/the-best-way-to-approach-game-development-as-a-solo-indie-dev-without-losing-your-mind-maintaining-2fcf4523371b)
 - [5 common new game developer mistakes (Unity)](https://unity.com/how-to/beginner/5-common-new-game-developer-mistakes)
+
+---
+
+**Próximo conceito** → [As mecânicas não-negociáveis de um Pokémon Fire Red-like](../02-mecanicas-nao-negociaveis-de-um-pokemon-fire-red-like/CONTENT.md)

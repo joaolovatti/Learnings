@@ -59,3 +59,7 @@ A fronteira concreta do MVP transforma o recorte cultural ("Pokémon Fire Red on
 - [High-level multiplayer — Godot Engine documentation](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
 - [GameDrivenDesign/godot-multiplayer-template (GitHub)](https://github.com/GameDrivenDesign/godot-multiplayer-template)
 - [Minimum Viable Product: What Does MVP in Gaming Mean? (Game Designing)](https://gamedesigning.org/career/mvp/)
+
+---
+
+**Próximo conceito** → [O que explicitamente fica de fora do MVP e por que](../05-o-que-fica-de-fora-do-mvp-e-por-que/CONTENT.md)

@@ -53,3 +53,7 @@ As seis mecânicas não-negociáveis — top-down, tilemap, movimento em grid, N
 - [How to implement Top-down Grid Movement in Godot — Sandro Maglione](https://www.sandromaglione.com/articles/top-down-grid-movement-in-godot-game-engine)
 - [Finite State Machine for Turn-Based Games — GameDev.net](https://gamedev.net/blogs/entry/2274204-finite-state-machine-for-turn-based-games/)
 - [Creating a game-size world map of Pokémon Fire Red — Medium](https://medium.com/@mmmulani/creating-a-game-size-world-map-of-pok%C3%A9mon-fire-red-614da729476a)
+
+---
+
+**Próximo conceito** → [O conceito de MVP jogável em gamedev](../03-o-que-e-um-mvp-jogavel-em-gamedev/CONTENT.md)

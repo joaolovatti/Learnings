@@ -84,3 +84,7 @@ O twist do online é uma realocação de responsabilidades: o cliente vira um **
 - [Netcode — Wikipedia](https://en.wikipedia.org/wiki/Netcode)
 - [Client-side prediction — Wikipedia](https://en.wikipedia.org/wiki/Client-side_prediction)
 - [Temtem — official site (canonical "Pokémon-like online" reference)](https://temtem.com/)
+
+---
+
+**Próximo conceito** → [A trilha incremental até o MVP](../07-a-trilha-incremental-ate-o-mvp/CONTENT.md)

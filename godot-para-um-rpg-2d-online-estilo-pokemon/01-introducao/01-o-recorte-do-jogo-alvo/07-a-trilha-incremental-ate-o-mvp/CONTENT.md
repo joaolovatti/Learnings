@@ -51,3 +51,7 @@ A trilha incremental converte o recorte do MVP em uma sequência de quatro estad
 - [Game Project Milestones: Efficient Planning for Indie Game Developers (Wayline)](https://www.wayline.io/blog/game-project-milestones-indie-devs-planning)
 - [High-level multiplayer — Godot Engine documentation](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
 - [Multiplayer in Godot 4.0: Scene Replication (Godot Engine)](https://godotengine.org/article/multiplayer-in-godot-4-0-scene-replication/)
+
+---
+
+**Próximo subcapítulo** → [Panorama de Engines 2D em 2026](../../02-panorama-de-engines-2d-em-2026/CONTENT.md)
