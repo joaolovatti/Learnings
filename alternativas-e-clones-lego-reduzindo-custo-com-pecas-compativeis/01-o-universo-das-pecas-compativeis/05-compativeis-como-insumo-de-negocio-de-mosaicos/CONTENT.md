@@ -16,6 +16,13 @@ Os blocos são: (1) **o custo por peça na prática** — comparação ilustrati
 
 Ao terminar este subcapítulo — e o capítulo inteiro — o leitor terá o raciocínio completo para iniciar qualquer conversa sobre abastecimento com a mentalidade certa: não "quero usar compatíveis para economizar" mas "vou usar compatíveis porque é a escolha estratégica para viabilizar o negócio com qualidade equivalente no produto final". Esse piso mental é o pré-requisito para absorver os capítulos seguintes — que entram em marcas, qualidade técnica, canais de compra e logística — como continuação de uma estratégia, não como lista de opções.
 
+## Conceitos
+
+1. [O Custo por Peça na Prática](01-o-custo-por-peca-na-pratica/CONTENT.md) — comparação entre LEGO original, compatível premium e genérico sem marca para peças 1×1
+2. [O Impacto no Mosaico de Retrato](02-o-impacto-no-mosaico-de-retrato/CONTENT.md) — custo total de material para pedidos típicos e como define o piso de preço de venda
+3. [Onde o Compatível é Indistinguível no Produto Final](03-onde-o-compativel-e-indistinguivel-no-produto-final/CONTENT.md) — mosaicos planares e peças coloridas vistas de frente: diferença visual zero
+4. [Quando Pode Valer Usar Original](04-quando-pode-valer-usar-original/CONTENT.md) — designs proprietários visualmente insubstituíveis ou cliente colecionador que especifica originalidade
+
 ## Fontes utilizadas
 
 - [Is it really possible to rebrick LEGO Art mosaics at a reasonable price? — Stonewars](https://stonewars.com/features/is-it-really-possible-to-rebrick-lego-art-mosaics-at-a-reasonable-price/)

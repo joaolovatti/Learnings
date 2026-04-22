@@ -24,6 +24,14 @@ Ao terminar este capítulo, o leitor terá o contexto histórico e legal para to
 4. [Legalidade, Ética e Comunicação com o Cliente](04-legalidade-etica-e-comunicacao-com-o-cliente/CONTENT.md) — por que comprar e usar compatíveis é completamente legal, como a LEGO respondeu à concorrência ao longo dos anos e como lidar com perguntas de clientes sobre o assunto
 5. [Compatíveis como Insumo de Negócio de Mosaicos](05-compativeis-como-insumo-de-negocio-de-mosaicos/CONTENT.md) — impacto direto no custo por peça e na margem, por que para retratos e mosaicos o compatível de qualidade é indistinguível do original no produto final e o que isso significa para a viabilidade do negócio
 
+## Conceitos
+
+1. [A Expiração das Patentes LEGO](01-a-expiracao-das-patentes-lego/CONTENT.md) — a linha do tempo de 1958 a 1978, o que expirou, o que a LEGO ainda protege e os casos judiciais que consolidaram a abertura do mercado
+2. ["Clone", "Compatível" e "Alternativo" — o Vocabulário do Mercado](02-clone-compativel-e-alternativo-o-vocabulario-do-mercado/CONTENT.md) — como a comunidade usa esses termos, o que cada um implica em qualidade e posicionamento e por que nenhum deles equivale a "falsificação"
+3. [O Mercado Global de Compatíveis Hoje](03-o-mercado-global-de-compativeis-hoje/CONTENT.md) — concentração em Guangdong, Gobricks como "Foxconn dos tijolos", volume de produção bilionária e como a escala industrial elevou o patamar de qualidade na última década
+4. [Legalidade, Ética e Comunicação com o Cliente](04-legalidade-etica-e-comunicacao-com-o-cliente/CONTENT.md) — por que comprar e usar compatíveis é completamente legal, como a LEGO respondeu à concorrência ao longo dos anos e como lidar com perguntas de clientes sobre o assunto
+5. [Compatíveis como Insumo de Negócio de Mosaicos](05-compativeis-como-insumo-de-negocio-de-mosaicos/CONTENT.md) — impacto direto no custo por peça e na margem, por que para retratos e mosaicos o compatível de qualidade é indistinguível do original no produto final e o que isso significa para a viabilidade do negócio
+
 ## Fontes utilizadas
 
 - [The ultimate guide to LEGO® compatible building blocks — Latericius](https://latericius.com/en/blogs/blog/lego-compatible-building-blocks)

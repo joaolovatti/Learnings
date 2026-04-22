@@ -16,6 +16,13 @@ Os blocos são: (1) **o que é definitivamente proibido** — usar a marca "LEGO
 
 Ao terminar este subcapítulo, o leitor estará confortável para usar compatíveis sem ambiguidade — sabendo exatamente o que não pode fazer (usar a marca LEGO no marketing), o que pode fazer (tudo o mais), e tendo em mãos uma resposta pronta para a pergunta do cliente caso ela apareça. Esse conforto é necessário para que o próximo subcapítulo — sobre impacto no custo e margem — seja lido com a mentalidade de otimização de negócio, não de justificativa.
 
+## Conceitos
+
+1. [O que É Definitivamente Proibido](01-o-que-e-definitivamente-proibido/CONTENT.md) — usar a marca LEGO, afirmar que são originais, copiar designs de minifiguras e propriedades licenciadas
+2. [O que É Completamente Permitido](02-o-que-e-completamente-permitido/CONTENT.md) — fabricar, comprar, revender e usar peças com sistema de encaixe compatível
+3. [Como a LEGO Respondeu à Concorrência](03-como-a-lego-respondeu-a-concorrencia/CONTENT.md) — tentativas fracassadas de usar lei de marcas e a atual coexistência pacífica
+4. [A Pergunta do Cliente — Três Abordagens Práticas](04-a-pergunta-do-cliente-tres-abordagens-praticas/CONTENT.md) — transparência total, redirecionamento para o produto e a não-pergunta
+
 ## Fontes utilizadas
 
 - [Lego clone — Wikipedia](https://en.wikipedia.org/wiki/Lego_clone)

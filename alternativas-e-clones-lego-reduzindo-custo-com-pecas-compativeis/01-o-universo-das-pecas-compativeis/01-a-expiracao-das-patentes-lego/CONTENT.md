@@ -16,6 +16,13 @@ Os blocos deste subcapítulo são: (1) **origens do sistema de encaixe** — Hil
 
 Ao terminar este subcapítulo, o leitor saberá articular com precisão por que o mercado de compatíveis é legal — não de forma vaga ("as patentes expiraram"), mas com a linha do tempo correta e com a distinção clara entre o que é domínio público (o sistema de encaixe) e o que ainda pertence à LEGO (marca, minifiguras, designs proprietários). Esse piso conceitual é o que permite absorver os próximos subcapítulos — sobre vocabulário do mercado, players e legalidade — sem ficar preso em dúvidas sobre a legitimidade do próprio ecossistema.
 
+## Conceitos
+
+1. [Origens do Sistema de Encaixe](01-origens-do-sistema-de-encaixe/CONTENT.md) — Kiddicraft, Hilary Page e o tijolo de Ole Kirk Christiansen em 1958
+2. [A Linha do Tempo das Patentes](02-a-linha-do-tempo-das-patentes/CONTENT.md) — stud-and-tube expirou em 1978, sistema básico em 1989
+3. [O que a LEGO Ainda Protege](03-o-que-a-lego-ainda-protege/CONTENT.md) — marca registrada, minifiguras, designs proprietários e licenças
+4. [Os Casos Judiciais que Consolidaram o Mercado Aberto](04-os-casos-judiciais-que-consolidaram-o-mercado/CONTENT.md) — Tyco (1987) e Mega Bloks na Suprema Corte canadense (2005)
+
 ## Fontes utilizadas
 
 - [Fake LEGO®s? The truth behind LEGO®'s patents — Latericius](https://latericius.com/en/blogs/blog/fake-legos)

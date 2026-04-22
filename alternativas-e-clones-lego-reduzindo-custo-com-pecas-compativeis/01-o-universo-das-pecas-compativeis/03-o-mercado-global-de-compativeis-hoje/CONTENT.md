@@ -16,6 +16,13 @@ Os blocos são: (1) **concentração geográfica** — Guangdong como hub princi
 
 Ao terminar este subcapítulo, o leitor terá um modelo mental claro do mercado: sabe que existe uma camada premium de compatíveis com engenharia séria, uma camada intermediária e uma camada genérica de risco — e entende por que a mesma peça pode ser ótima ou péssima dependendo de onde foi fabricada, mesmo que o AliExpress coloque as duas no mesmo resultado de busca. Esse modelo é o que vai guiar as decisões de compra nos capítulos seguintes.
 
+## Conceitos
+
+1. [Concentração Geográfica — Guangdong e o Cluster Industrial de Tijolos](01-concentracao-geografica-guangdong-e-o-cluster-de-tijolos/CONTENT.md) — Shantou e Chaozhou como equivalente de Shenzhen para eletrônicos no contexto de tijolos
+2. [Gobricks como Infraestrutura do Mercado](02-gobricks-como-infraestrutura-do-mercado/CONTENT.md) — OEM para Mould King, Sembo e dezenas de outros, capacidade de 1 bilhão de peças/mês
+3. [Hierarquia de Qualidade — Top Tier, Intermediário e Genérico sem Controle](03-hierarquia-de-qualidade-top-tier-intermediario-e-generico/CONTENT.md) — a distinção prática entre fabricantes sérios e genéricos sem controle de qualidade
+4. [Trajetória de Melhora da Última Década](04-trajetoria-de-melhora-da-ultima-decada/CONTENT.md) — como o mercado evoluiu de produtos inferiores a tolerâncias próximas ao LEGO
+
 ## Fontes utilizadas
 
 - [Gobricks the Foxconn of China Clone Bricks — Customize Minifigures Intelligence](https://customizeminifiguresintelligence.wordpress.com/2020/07/27/gobricks-the-foxconn-of-china-clone-bricks/)

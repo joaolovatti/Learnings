@@ -16,6 +16,14 @@ Os blocos são: (1) **"clone"** — o termo mais antigo, usado para fabricantes 
 
 Ao terminar este subcapítulo, o leitor usará os termos corretos em cada contexto — sabendo quando dizer "compatível" a um cliente, quando "clone" funciona numa conversa técnica com fornecedor e por que nunca deve usar "falsificação" para Gobricks ou Mould King. Essa precisão vocabular é a base para comunicar com segurança sobre o produto tanto internamente (estoque, processo) quanto externamente (cliente, marketing).
 
+## Conceitos
+
+1. ["Clone" — o Termo Mais Antigo e Sua Conotação Variável](01-clone-o-termo-mais-antigo-e-sua-conotacao/CONTENT.md) — o termo mais antigo, conotação de neutra a levemente pejorativa dependendo do contexto
+2. ["Compatível" — Interoperabilidade sem Implicar Inferioridade](02-compativel-interoperabilidade-sem-inferioridade/CONTENT.md) — termo preferido pela comunidade técnica e por fabricantes de ponta como Gobricks
+3. ["Alternativo" — a Categoria Mais Ampla](03-alternativo-a-categoria-mais-ampla/CONTENT.md) — inclui marcas como COBI e Mega Construx que não buscam compatibilidade total com LEGO
+4. ["Falsificação" e "Pirata" — o que Realmente Significam Legalmente](04-falsificacao-e-pirata-o-que-realmente-sao/CONTENT.md) — termos reservados para cópia ilegal de marcas registradas, categoria distinta das anteriores
+5. [Como a Comunidade Categoriza na Prática](05-como-a-comunidade-categoriza-na-pratica/CONTENT.md) — "alt bricks", "LEGO alternatives" e outros guarda-chuvas em fóruns e sites
+
 ## Fontes utilizadas
 
 - [Lego clone — Wikipedia](https://en.wikipedia.org/wiki/Lego_clone)
