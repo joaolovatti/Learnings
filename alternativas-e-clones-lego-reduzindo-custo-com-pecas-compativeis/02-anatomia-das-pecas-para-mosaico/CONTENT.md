@@ -16,6 +16,14 @@ Os grandes blocos são: (1) o sistema de medidas LEGO — o que é LDU (LEGO Des
 
 Ao terminar este capítulo, o leitor conseguirá identificar corretamente qualquer peça relevante para mosaicos pelo nome, entender fichas de produto em lojas como BrickLink e Gobricks, e especificar pedidos sem ambiguidade. Estará pronto para o capítulo seguinte, que apresenta as marcas e pressupõe esse vocabulário.
 
+## Subcapítulos
+
+1. [O Sistema de Medidas LEGO](01-o-sistema-de-medidas-lego/CONTENT.md) — LDU como unidade base, stud como unidade prática e a proporção brick/plate/tile em altura que define toda a geometria do sistema
+2. [As Peças 1×1 para Mosaico: Plate, Tile e Variantes](02-as-pecas-1x1-para-mosaico-plate-tile-e-variantes/CONTENT.md) — tipos, dimensões e diferenças estruturais entre 1×1 plate, tile (flat), round plate e round tile
+3. [Impacto Visual das Peças no Mosaico de Retrato](03-impacto-visual-das-pecas-no-mosaico-de-retrato/CONTENT.md) — como plate vs tile vs round muda textura, reflexo e cobertura de stud; critério prático de escolha para retratos
+4. [Baseplates: O Substrato do Mosaico](04-baseplates-o-substrato-do-mosaico/CONTENT.md) — tamanhos 16×16, 32×32 e 48×48, conexão entre placas, compatibilidade com compatíveis e papel estrutural no produto final
+5. [Nomenclatura BrickLink: Design ID, Color ID e Como Usar](05-nomenclatura-bricklink-design-id-color-id-e-como-usar/CONTENT.md) — como peças são identificadas no mercado, o sistema de IDs do BrickLink e Gobricks, e como ler uma ficha de produto sem ambiguidade
+
 ## Fontes utilizadas
 
 - [Basic LEGO Parts Guide — Brick Architect](https://brickarchitect.com/parts/category-1)
