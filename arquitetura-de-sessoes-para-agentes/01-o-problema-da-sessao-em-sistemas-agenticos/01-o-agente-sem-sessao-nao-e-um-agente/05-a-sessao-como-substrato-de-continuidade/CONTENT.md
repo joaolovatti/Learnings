@@ -78,7 +78,7 @@ sequenceDiagram
     L->>LLM: Inferência com janela montada
     LLM-->>L: Thought + Action + Answer
     L->>DB: Persiste: novos events, atualiza state, resolve/cria intents
-    Note over L,DB: Janela descartada; substrato atualizado
+    Note over L,DB: Janela descartada, substrato atualizado
 ```
 
 O diagrama mostra o ciclo completo que o sistema atual não tem. O substrato é carregado antes da inferência, a janela é montada a partir dele (não diretamente do banco de mensagens), e o substrato é atualizado após a inferência — incluindo a resolução de intenções que foram satisfeitas e o rastreamento das ações executadas. O LLM vê apenas a janela; nunca vê diretamente o substrato. Isso é a separação que torna o agente capaz de operar em sessões longas: o substrato cresce com o tempo, mas a janela permanece dentro do token budget porque o context assembler seleciona o que é relevante para o turno atual.
