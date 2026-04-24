@@ -74,7 +74,7 @@ sequenceDiagram
     L->>M: Lê histórico (turns 1-2)
     L->>LLM: [system][hist 1-2][user: CK-1042 mudou?]
     LLM-->>L: Action: get_ticket → "Em revisão." — SEM acionar Slack/Calendário
-    Note over LLM: Intenção com ações nunca foi um objeto; não há gatilho para executar
+    Note over LLM: Intenção com ações nunca foi um objeto, não há gatilho para executar
 ```
 
 O diagrama revela o ponto exato da ruptura: entre o turn 1 e o final do processamento, há uma lacuna estrutural. O MongoDB recebe o histórico de mensagens, mas o objeto de intenção que deveria ter sido criado — algo como `{session_id, trigger_condition, pending_actions, created_at}` — nunca foi escrito em lugar nenhum porque o sistema não tem esse conceito.
