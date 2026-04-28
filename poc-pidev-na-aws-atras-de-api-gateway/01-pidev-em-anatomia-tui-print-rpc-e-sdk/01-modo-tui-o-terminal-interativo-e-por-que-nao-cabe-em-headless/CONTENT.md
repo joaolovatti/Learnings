@@ -20,12 +20,12 @@ Ao terminar este subcapítulo, o leitor conseguirá invocar o pi.dev em modo TUI
 
 A explicação completa destes conceitos vive em [`CONCEPTS.md`](CONCEPTS.md), construída sequencialmente pela skill `estudo-explicar-conceito`.
 
-1. Flag de invocação e detecção de TTY — como o harness decide entrar em modo TUI (ausência de flag ou `--mode interactive`) e o papel da detecção de TTY nessa decisão
-2. O que o modo TUI entrega — rendering diferencial via ANSI, backbuffer, editor multi-linha com syntax highlighting e feedback em tempo real de tool execution
-3. Dependências de ambiente do modo TUI — o que o processo exige do OS para funcionar: TTY real, raw mode, controle ANSI e stdin não redirecionado
-4. O que acontece sem TTY — crash, hang ou fallback silencioso: por que piped I/O e stdin redirecionado quebram o modo interativo
-5. Por que Lambda e Fargate não têm TTY por design — como esses serviços inicializam processos sem terminal anexado e o que isso significa para o harness
-6. Quando o TUI ainda vale no contexto desta POC — desenvolvimento local, debugging de prompts e tools antes do deploy, e o limite dessa utilidade
+1. O que é e como invocar o modo TUI — a ausência de flag (ou `--mode interactive`) como gatilho, e o que o harness instancia ao detectar presença de TTY
+2. Rendering diferencial e editor multi-linha — como o TUI atualiza só regiões modificadas do terminal (sem flicker, sem screen clear) e o que o editor de input oferece (syntax highlighting, slash commands, autocomplete de caminhos)
+3. O que é um TTY e por que o modo TUI depende dele — a relação entre `tty.isatty()`/`process.stdout.isTTY`, controle ANSI, e a superfície de terminal que o rendering diferencial e o editor precisam para funcionar
+4. O que acontece quando pi roda sem TTY — crash, hang ou saída silenciosa, e por que o harness não tem fallback gracioso para ambientes sem terminal
+5. Por que Lambda e Fargate não fornecem TTY — como esses runtimes servem processos sem terminal anexado (I/O redirecionado, sem alocação de pty), tornando o modo TUI impossível de instanciar
+6. Quando o TUI ainda é útil no contexto desta POC — o papel do modo TUI em desenvolvimento local (debugging de prompts e tools, exploração de comportamento do agente) antes de subir para AWS, e o limite claro onde ele para de servir
 
 ## Fontes utilizadas
 

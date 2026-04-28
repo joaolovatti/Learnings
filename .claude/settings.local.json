@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(mkdir -p godot-para-um-rpg-2d-online-estilo-pokemon)",
+      "Bash(python .claude/skills/gerar-imagem/scripts/generate_image.py --prompt \"Digital painting in soft fantasy style: a small glowing lantern resting on a hilltop at dusk, casting warm golden light across a vast layered landscape of distant villages connected by winding luminous pathways, suggesting connection across distance and a solo traveler illuminating a wide world. Warm amber, emerald, and deep indigo palette. Painterly, cinematic, atmospheric, soft brushwork. No text, no letters, no words.\" --output \"godot-para-um-rpg-2d-online-estilo-pokemon/cover.png\" --size 1536x1024)",
+      "Bash(rm *)",
+      "Bash(python *)",
+      "Bash(break)",
+      "WebFetch(domain:www.linkedin.com)",
+      "WebFetch(domain:docs.godotengine.org)",
+      "WebFetch(domain:godotengine.org)",
+      "WebFetch(domain:rivet.dev)",
+      "WebFetch(domain:forum.godotengine.org)",
+      "WebFetch(domain:ziva.sh)",
+      "WebFetch(domain:gameprogrammingpatterns.com)",
+      "WebFetch(domain:uhiyama-lab.com)",
+      "WebFetch(domain:www.wayline.io)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:trinovantes.github.io)",
+      "WebFetch(domain:www.sightlessdev.com)",
+      "WebFetch(domain:gamedevfcups.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:generalistprogrammer.com)",
+      "Skill(update-config)"
+    ]
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "defaultMode": "bypassPermissions"
+}

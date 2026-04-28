@@ -4,26 +4,14 @@ Método de estudo estruturado em livros. Cada livro vive num diretório próprio
 
 ## Livros
 
-### [Godot para um RPG 2D Online Estilo Pokémon](godot-para-um-rpg-2d-online-estilo-pokemon/INTRODUCTION.md)
-
-![capa](godot-para-um-rpg-2d-online-estilo-pokemon/cover.png)
-
-Travessia de um engenheiro de software sênior — sem vivência prévia com engines — até ter um RPG 2D top-down online no molde de Pokémon Fire Red rodando em Godot 4. Cobre fundamentos da engine (nodes, scenes, tilemaps, signals, resources), os sistemas clássicos de um Pokémon-like (movimento em grid, NPCs e diálogos, combate por turnos, party e inventário), a camada online (cliente-servidor, autoridade, sincronização de estado, persistência server-side) e a integração com pipeline de assets gerados por AI.
-
-### [Arquitetura de Sessões para Agentes](arquitetura-de-sessoes-para-agentes/INTRODUCTION.md)
-
-![capa](arquitetura-de-sessoes-para-agentes/cover.png)
-
-Para um engenheiro que já tem tool calling rodando mas nunca implementou a camada de sessão por baixo. Cobre o vocabulário e os padrões fundamentais de sessão agêntica (substrato persistente vs. janela de contexto, state machines de ciclo de vida), estratégias de persistência e compactação de contexto, os limites do Lambda stateless e as alternativas (Lambda Durable Functions, Fargate/ECS, WebSocket API Gateway), e como conectar tudo isso ao loop agêntico existente — com o modelo Pi.dev como referência de UX para sessões como produto.
-
 ### [POC End-to-End — Pi.dev Atrás de API Gateway na AWS Para Validação Com Cliente](poc-pidev-na-aws-atras-de-api-gateway/INTRODUCTION.md)
 
 ![capa](poc-pidev-na-aws-atras-de-api-gateway/cover.png)
 
 Travessia de um engenheiro sênior — avançado em AWS e LLMs, zero em pi.dev — até uma POC pública na AWS que o cliente consegue testar via API Gateway sem suporte do dev. Foco deliberadamente prático: pi.dev tratado como runtime pronto, decisões de hospedagem (Lambda vs Fargate, EFS vs S3, SDK vs RPC) calibradas para o caso específico do harness, sessões persistidas fora do disco local, e empacotamento da entrega (URL pública, credencial de teste, instruções) como objetivo final. Não cobre hardening de produção — esse recorte fica para os livros seguintes do método.
 
-### [Alternativas e Clones LEGO — Reduzindo Custo com Peças Compatíveis](alternativas-e-clones-lego-reduzindo-custo-com-pecas-compativeis/INTRODUCTION.md)
+### [Monitoramento Contínuo no Android — Foreground Services, UsageStatsManager, AccessibilityService e Arquitetura com Jetpack para Coleta de Logs em Tempo Real](monitoramento-continuo-no-android-foreground-services-usagestatsmanager-accessibilityservice-e-arquitetura-com-jetpack-para-coleta-de-logs-em-tempo-real/INTRODUCTION.md)
 
-![capa](alternativas-e-clones-lego-reduzindo-custo-com-pecas-compativeis/cover.png)
+![capa](monitoramento-continuo-no-android-foreground-services-usagestatsmanager-accessibilityservice-e-arquitetura-com-jetpack-para-coleta-de-logs-em-tempo-real/cover.png)
 
-Guia prático de abastecimento para quem quer montar e vender mosaicos e esculturas LEGO customizados sem depender exclusivamente de peças originais. Mapeia o ecossistema de compatíveis (Gobricks, Mould King, Cada, genéricos), ensina a avaliar qualidade técnica, e orienta a montagem de um estoque inicial viável para os primeiros pedidos — com foco em fornecedores acessíveis a partir de São Paulo.
+Para um desenvolvedor Android com background em Java e Flutter que precisa construir um app de monitoramento contínuo — como controle parental. Cobre a tríade técnica interdependente: manter um Foreground Service vivo sob as restrições do Android 8–15 (com WorkManager e reboot survival), coletar eventos de uso via `UsageStatsManager` e `AccessibilityService`, e estruturar o fluxo completo com Room, StateFlow e Retrofit até o backend.

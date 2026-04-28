@@ -4,221 +4,156 @@
 
 ## Roteiro
 
-1. Flag de invocação e detecção de TTY — como o harness decide entrar em modo TUI (ausência de flag ou `--mode interactive`) e o papel da detecção de TTY nessa decisão
-2. O que o modo TUI entrega — rendering diferencial via ANSI, backbuffer, editor multi-linha com syntax highlighting e feedback em tempo real de tool execution
-3. Dependências de ambiente do modo TUI — o que o processo exige do OS para funcionar: TTY real, raw mode, controle ANSI e stdin não redirecionado
-4. O que acontece sem TTY — crash, hang ou fallback silencioso: por que piped I/O e stdin redirecionado quebram o modo interativo
-5. Por que Lambda e Fargate não têm TTY por design — como esses serviços inicializam processos sem terminal anexado e o que isso significa para o harness
-6. Quando o TUI ainda vale no contexto desta POC — desenvolvimento local, debugging de prompts e tools antes do deploy, e o limite dessa utilidade
+1. O que é e como invocar o modo TUI — a ausência de flag (ou `--mode interactive`) como gatilho, e o que o harness instancia ao detectar presença de TTY
+2. Rendering diferencial e editor multi-linha — como o TUI atualiza só regiões modificadas do terminal (sem flicker, sem screen clear) e o que o editor de input oferece (syntax highlighting, slash commands, autocomplete de caminhos)
+3. O que é um TTY e por que o modo TUI depende dele — a relação entre `tty.isatty()`/`process.stdout.isTTY`, controle ANSI, e a superfície de terminal que o rendering diferencial e o editor precisam para funcionar
+4. O que acontece quando pi roda sem TTY — crash, hang ou saída silenciosa, e por que o harness não tem fallback gracioso para ambientes sem terminal
+5. Por que Lambda e Fargate não fornecem TTY — como esses runtimes servem processos sem terminal anexado (I/O redirecionado, sem alocação de pty), tornando o modo TUI impossível de instanciar
+6. Quando o TUI ainda é útil no contexto desta POC — o papel do modo TUI em desenvolvimento local (debugging de prompts e tools, exploração de comportamento do agente) antes de subir para AWS, e o limite claro onde ele para de servir
 
 <!-- ROTEIRO-END -->
 
-<!-- PENDENTE-START -->
-> _Pendente: 6 / 6 conceitos preenchidos._
-<!-- PENDENTE-END -->
+## 4. O que acontece quando pi roda sem TTY — crash, hang ou saída silenciosa, e por que o harness não tem fallback gracioso para ambientes sem terminal
+
+O `## 3.` mostrou que `setRawMode(true)` é o que permite ao `Editor` receber teclas individuais sem o buffer de linha do kernel. O que acontece quando esse método não existe? Em Node.js, `process.stdin.setRawMode` só está disponível quando `process.stdin` é uma instância de `tty.ReadStream` — o que só ocorre quando stdin está conectado a um TTY real. Em qualquer outro caso (stdin redirecionado de arquivo, pipe, ou `/dev/null`), `process.stdin.setRawMode` é `undefined`. Chamar `undefined()` é um `TypeError` imediato — o processo termina com stack trace ou, se houver um handler de erro no event loop, o erro borbulha de forma silenciosa dependendo de onde a chamada está dentro da cadeia de inicialização.
+
+Isso define o primeiro modo de falha: **crash por TypeError**. Quando o `InteractiveMode` tenta inicializar o `Editor` e chama `setRawMode(true)` num stdin não-TTY, o processo lança um erro não recuperável. Não há fallback para modo de texto simples nem mensagem de uso amigável: o harness simplesmente não foi desenhado para degradar graciosamente nesse ponto, porque o modo TUI pressupõe TTY como invariante, não como recurso opcional. Agentes de terminal similares que usam Ink (como o próprio Claude Code) documentam a mesma categoria de erro — "Raw mode is not supported on the stdin provided" — como falha fatal em ambientes sem terminal.
+
+O segundo modo de falha é **hang no event loop**. Se a inicialização do `Editor` for adiada ou protegida por uma guarda de `isTTY`, o processo pode completar a inicialização do `InteractiveMode` e entrar no loop de leitura de stdin aguardando input do usuário — que nunca chega porque stdin está vazio ou fechado imediatamente após a abertura. O `readline` e o event loop do Node.js mantêm o processo vivo enquanto há listeners no stream; sem input e sem timeout, o processo fica suspenso indefinidamente. Esse comportamento foi observado em outros agentes TUI no mesmo ecossistema e corresponde ao que acontece quando um processo interativo é invocado de dentro de um script CI sem alocação de PTY — o script simplesmente trava até o timeout do CI matar o job.
+
+O terceiro modo é menos provável mas possível: **saída silenciosa sem código de erro**. Se alguma guarda mais alta no fluxo de inicialização verificar `process.stdout.isTTY` e retornar cedo sem imprimir nada, o processo termina com exit code 0 e zero output — o que é o pior dos mundos para diagnóstico, porque parece que o comando funcionou. Esse modo só ocorreria se houvesse alguma lógica de detecção adiantada de TTY antes da inicialização do `InteractiveMode`, o que os dados disponíveis sobre o harness não confirmam como caminho atual.
+
+O que não existe no pi.dev é um **fallback gracioso**: o modo TUI não detecta ausência de TTY e oferece automaticamente modo texto, prompt simples, ou encaminha para print/JSON. Essa é uma escolha de design — o harness delega ao invocador a responsabilidade de selecionar o modo certo para o ambiente. Quem quer rodar sem TTY passa `--mode json`, `--mode rpc`, ou usa o SDK; ninguém "descobre" o modo TUI e o harness o rebaixa silenciosamente para algo que funciona. O modelo mental correto é de **superfícies separadas com pré-condições explícitas**, não de degradação progressiva de uma única superfície universal.
+
+Para a POC descrita neste livro, essa ausência de fallback é irrelevante — porque a POC nunca vai invocar o modo TUI no ambiente AWS. O que importa registrar aqui é o mecanismo: cada primitiva que os conceitos anteriores descreveram (`setRawMode`, `clearLine`, `moveCursor`, `columns`, `resize`) termina em falha ou no-op quando o file descriptor não é um TTY, e o conjunto dessas falhas em cascata produz um processo que crash, trava ou sai silenciosamente dependendo de qual primitiva é chamada primeiro e se há guards parciais no caminho.
+
+**Fontes utilizadas:**
+
+- [TTY | Node.js v25.9.0 Documentation](https://nodejs.org/api/tty.html)
+- [setRawMode fails when running with non-TTY stdin — Ink Issue #166](https://github.com/vadimdemedes/ink/issues/166)
+- [Claude Code CLI hangs without TTY despite using -p flag — Issue #9026](https://github.com/anthropics/claude-code/issues/9026)
+- [Understanding and Resolving the Error "The input device is not a TTY" — Medium](https://medium.com/@haroldfinch01/understanding-and-resolving-the-error-the-input-device-is-not-a-tty-75199ab2344d)
+- [isTTY can be used to tailor appropriate Node process output — Stefan Judis](https://www.stefanjudis.com/today-i-learned/istty-can-be-used-to-tailor-appropriate-node-process-output/)
+
 
 <!-- AULAS-START -->
-## 1. Flag de invocação e detecção de TTY
 
-Para quem chega ao pi.dev vindo de ferramentas com interfaces rígidas — um `aws` CLI que sempre imprime JSON, um `node script.js` que sempre termina em segundos — o primeiro estranhamento é que `pi` não exige flag nenhuma para entrar em modo TUI. Você digita `pi` num terminal e o harness decide sozinho o que fazer. Essa decisão, que parece trivial, é o núcleo do conceito 1: entender *como* o harness decide e *por que* a ausência de flag funciona como padrão.
+## 1. O que é e como invocar o modo TUI — a ausência de flag (ou `--mode interactive`) como gatilho, e o que o harness instancia ao detectar presença de TTY
 
-A lógica de resolução de modo do pi.dev examina dois fatores em sequência. Primeiro, ela verifica se há uma flag explícita que force um modo alternativo: `-p` (ou `--print`) para saída batch, `--mode json` para event stream em JSON, `--mode rpc` para protocolo JSONL sobre stdin/stdout. Se nenhuma dessas flags está presente, o harness passa para o segundo fator: verifica se `stdin` é um TTY real. Só depois dessas duas checagens o modo interativo é confirmado ou descartado.
+O modo TUI é o ponto de entrada padrão do pi.dev: quando você executa `pi` num terminal real sem qualquer flag de modo, o harness inspeciona o stdin via `resolveAppMode` e, ao detectar que está conectado a um TTY, ativa o `InteractiveMode`. Não há nenhuma flag obrigatória — a ausência de `-p`, `--mode json` e `--mode rpc` é ela mesma o gatilho. Se quiser tornar a intenção explícita, o harness aceita `--mode interactive`, mas no dia a dia ninguém escreve isso porque o padrão já é esse.
 
-O que é um TTY no sentido que importa aqui? O nome vem de *teletypewriter* — os terminais físicos dos anos 60 e 70. Hoje, na prática, um TTY é a interface entre um processo e um terminal emulado. Quando você abre um terminal no macOS ou no Linux, o emulador de terminal (iTerm, GNOME Terminal, Windows Terminal) cria um par de dispositivos pseudoterminais (PTY): um lado master, controlado pelo emulador, e um lado slave, exposto ao processo filho (o shell, ou o `pi`). O processo filho — `pi`, neste caso — vê o lado slave como um arquivo de dispositivo em `/dev/pts/N`. Ele pode perguntar ao kernel se esse descritor é um TTY real usando a chamada de sistema `isatty(fd)`.
+O que o harness instancia ao entrar em modo TUI é uma árvore de componentes proprietária — o pi não usa Ink, React ou qualquer framework de UI de terminal. A classe `InteractiveMode` inicializa o motor de rendering diferencial, o componente de editor multi-linha, o footer com metadados da sessão (diretório de trabalho, tokens acumulados, custo e modelo ativo), e watchers de arquivo para `.git/HEAD` (detecção de branch) e arquivos de tema. A startup exibe um cabeçalho listando os recursos carregados (extensões, skills, tools habilitadas), e a partir daí a interface fica em modo de leitura contínua de input do usuário.
 
-Em Node.js, o wrapper dessa chamada de sistema aparece como a propriedade `isTTY` nas streams do processo. `process.stdin.isTTY` é `true` quando o descritor 0 (stdin) está conectado a um PTY real; é `undefined` (ou falsy) quando stdin veio de um pipe, de um redirecionamento de arquivo, ou de qualquer fonte que não seja um terminal. O pi.dev usa essa propriedade — internamente via a função `resolveAppMode` — para distinguir "está num terminal real" de "está sendo chamado por outro processo". A combinação das duas checagens (ausência de flag + `stdin.isTTY === true`) é o que dispara o modo TUI.
+A interação acontece inteiramente dentro dessa superfície de terminal: o usuário digita no editor multi-linha (Shift+Enter para quebra de linha), usa Tab para completar caminhos, `@` para referenciar arquivos por busca fuzzy, ou cola imagens com Ctrl+V. Slash commands (`/model`, `/resume`, `/fork`, `/tree`, `/settings`) são interpretados pelo próprio harness antes de chegarem ao modelo. A sessão ativa é mantida em memória — ao sair e retomar com `/resume`, o histórico é carregado do disco.
 
-```
-Execução                         stdin.isTTY    Flag explícita    Modo resultante
-───────────────────────────────  ─────────────  ───────────────   ───────────────
-$ pi                             true           nenhuma           TUI (interativo)
-$ pi --mode rpc                  true           --mode rpc        RPC
-$ echo "prompt" | pi             false          nenhuma           falha / fallback
-$ pi -p "prompt"                 true           -p                Print
-$ node handler.js (Lambda)       false          nenhuma           falha / fallback
-```
-
-A armadilha mais documentada nessa categoria de ferramentas — e que afeta diretamente o pi.dev — é tentar rodar o harness em modo TUI sem TTY e receber o erro `Raw mode is not supported`. Quando o harness confirma o modo interativo e tenta colocar o stdin em raw mode (necessário para capturar teclas individuais, setas, combinações como Ctrl+C sem interpretação do kernel), o runtime Node.js exige que o stream seja de fato um `tty.ReadStream`. Se `stdin` for um pipe ou um arquivo, a tentativa de chamar `setRawMode(true)` resulta em exceção imediata — não em degradação silenciosa. Isso é exatamente o comportamento que os capítulos seguintes do livro vão explorar: quando Lambda inicializa o processo `pi` sem terminal anexado, esse erro aparece no primeiro turno e derruba o handler antes de qualquer resposta ser gerada.
-
-Um detalhe que confunde quem lê o código pela primeira vez: a detecção de TTY checa `stdin`, mas o raw mode e o rendering ANSI são sobre o *conjunto* stdin + stdout + stderr. Um processo pode ter `stdout` conectado a um pipe (para capturar a saída) e `stdin` ainda num TTY — nesse caso `stdin.isTTY` seria `true` mas o rendering diferencial do TUI não teria onde imprimir os frames ANSI. Na prática, o pi.dev opera sob a premissa de que um TTY real no stdin implica stdin+stdout+stderr todos conectados ao mesmo terminal — o que é verdade no uso interativo normal, e é falso em todos os ambientes headless que aparecem nos capítulos 4 e 5.
+Essa cadeia de dependências — `InteractiveMode` → motor de rendering → ANSI sobre stdout → input de teclado sobre stdin — é o que torna o modo TUI inseparável de um terminal real. Cada um dos conceitos seguintes desta aula desmonta uma peça dessa dependência, chegando ao ponto onde o capítulo 5 (`05-o-subset-que-importa-para-a-poc-headless`) vai declarar formalmente a eliminação desse modo para a POC.
 
 **Fontes utilizadas:**
 
-- [Getting Started & CLI Reference — badlogic/pi-mono DeepWiki](https://deepwiki.com/badlogic/pi-mono/4.1-getting-started-and-cli-reference)
-- [Pi Coding Agent README — badlogic/pi-mono](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)
-- [TTY — Node.js v25.9.0 Documentation](https://nodejs.org/api/tty.html)
-- [Pseudoterminal — Wikipedia](https://en.wikipedia.org/wiki/Pseudoterminal)
-- [Linux terminals, tty, pty and shell — DEV Community](https://dev.to/napicella/linux-terminals-tty-pty-and-shell-192e)
-- [CLI crashes with "Raw mode is not supported" error when piping input — anthropics/claude-code Issue #5925](https://github.com/anthropics/claude-code/issues/5925)
-- [Error Raw mode is not supported in non-interactive (non-TTY) environments — ruvnet/claude-flow Issue #213](https://github.com/ruvnet/claude-flow/issues/213)
-
-## 2. O que o modo TUI entrega
-
-O conceito 1 estabeleceu o mecanismo de decisão: como o harness detecta o TTY e confirma o modo interativo. O que acontece depois dessa confirmação é o que este conceito cobre — a superfície concreta que o leitor encontra ao rodar `pi` num terminal real e que, como veremos nos conceitos 3 e 4, está inteiramente ausente em qualquer ambiente headless.
-
-O modo TUI é construído sobre a biblioteca `@mariozechner/pi-tui`, extraída do próprio pi.dev como pacote independente. O primeiro elemento visível ao usuário é um editor multi-linha com suporte a syntax highlighting, baseado no Kitty keyboard protocol para captura confiável de modificadores e combinações como Alt+Enter, Ctrl+K ou teclas de seta. "Kitty keyboard protocol" aqui não tem relação com o terminal Kitty — é um protocolo de evento de teclado que qualquer emulador moderno pode implementar e que substitui o encoding xterm-legacy, notoriamente ambíguo para diferenciar, por exemplo, `Esc` de `Alt+[`. O editor aceita entrada multi-linha (quebra de linha via Enter), suporta undo/redo com kill-ring, e exibe syntax highlighting em tempo real sobre o texto digitado — o highlighting é aplicado por um renderer de markdown interno com colorização baseada em tema, o mesmo renderer que processa as respostas do modelo.
-
-A resposta do agente não aparece como um bloco de texto de uma vez. Ela é renderizada de forma progressiva, diretamente no terminal, à medida que o modelo emite tokens — e aqui entra o mecanismo central do TUI: **rendering diferencial com backbuffer**. O engine da pi-tui mantém um array interno chamado `previousLines`, que registra exatamente o que foi escrito no terminal no último frame. A cada novo frame, o engine compara linha a linha o estado atual com esse backbuffer. Quando localiza a primeira linha que diverge, move o cursor do terminal para aquela posição usando sequências ANSI de movimento de cursor (`ESC[<linha>;<coluna>H`) e redesenha a partir daí até o final — descartando qualquer linha da renderização anterior que não exista mais no frame atual. O resultado é que só o delta vai para stdout, não a tela inteira. Em sessões longas com múltiplos blocos de código e markdown já renderizados e estabilizados, os tokens novos chegando causam atualizações de apenas algumas linhas no final da tela, não um flush completo.
-
-A estratégia de rendering tem três casos distintos. O primeiro é a renderização inicial (first render), em que o engine simplesmente imprime todas as linhas porque não há `previousLines` — é um flush completo, mas só acontece uma vez por sessão. O segundo é o redraw forçado: quando o usuário redimensiona a janela do terminal, o número de colunas muda e o soft-wrapping de linhas longas precisa ser recalculado — qualquer linha que antes cabia em uma linha visual agora pode ocupar duas, e vice-versa; nesse caso o engine limpa a tela inteira e re-renderiza do zero, porque o backbuffer inteiro ficou obsoleto. O terceiro é o differential update, que é o caminho normal: backbuffer comparado, cursor movido para o primeiro ponto divergente, redesenho a partir daí. Uma limitação real aqui: se a primeira linha que mudou estiver acima do viewport atual (o usuário rolou o terminal para cima), o engine não consegue escrever no scrollback buffer acima do cursor — o terminal não permite isso. Nesse caso, ele desce para o final e faz um redraw completo.
-
-Para evitar que o usuário veja frames intermediários durante o differential update — o que causaria flickering perceptível —, a pi-tui envolve cada ciclo de renderização com as sequências de synchronized output: `ESC[?2026h` antes de emitir qualquer dado, `ESC[?2026l` ao final. Esses dois marcadores instruem o emulador de terminal a bufferizar toda a saída recebida entre eles e só exibir atomicamente quando o marcador de fechamento chegar. Em emuladores modernos como Ghostty ou iTerm2, isso resulta em atualizações completamente sem flicker. No terminal embutido do VS Code, o suporte ao protocolo CSI 2026 é parcial e o resultado é flicker ocasional — o próprio autor da pi-tui documenta essa limitação como aceitável dentro do escopo da ferramenta.
-
-O outro pilar do TUI é o feedback em tempo real da execução de tools. Enquanto o agente executa uma chamada de ferramenta — rodar um bash command, ler um arquivo, fazer uma requisição HTTP — os componentes `ToolExecutionComponent` e `BashExecutionComponent` atualizam o terminal progressivamente, mostrando o status corrente da execução (iniciando, executando, saída parcial, concluído). Um caso especialmente visível: quando o agente reescreve um arquivo com a tool de edição, o diff é exibido à medida que o modelo still streams os argumentos da chamada — a pi-ai, a camada de comunicação com o modelo, faz parsing incremental do JSON parcial recebido e alimenta o componente de display antes de o JSON da chamada de ferramenta estar completo. Isso significa que o usuário vê a diff sendo construída linha a linha, não como dump atômico ao final. Esse comportamento é produzido pela combinação de streaming de tokens do modelo com parsing progressivo de JSON — e é, por design, impossível de replicar em nenhum dos modos headless: Print espera o turno inteiro terminar antes de emitir qualquer saída, e RPC emite eventos discretos (text chunk, tool call, tool result) em vez de uma superfície visual contínua.
-
-A armadilha real documentada em projetos derivados do pi-tui é a dependência implícita no suporte terminal ao Kitty keyboard protocol para algumas funcionalidades do editor. Terminais que não implementam o protocolo (versões antigas de xterm, PuTTY, terminais de IDE desatualizados) degradam o editor — algumas combinações de teclas não chegam como esperado, o que produz comportamentos erráticos no editor multi-linha. A pi-tui tenta detectar o suporte e fazer fallback gracioso, mas alguns edge cases escapam. Para o contexto desta POC, isso é irrelevante — o TUI só serve em desenvolvimento local, e qualquer terminal moderno (macOS Terminal, iTerm2, Windows Terminal, GNOME Terminal recente) implementa o protocolo. O ponto importante é que essas dependências em protocolos específicos de emulador de terminal são mais um motivo pelo qual o TUI é descartado para execução headless: Lambda e Fargate não apenas não têm TTY, como também não têm emulador de terminal nenhum — os conceitos de "protocolo de teclado" e "synchronized output" simplesmente não existem nesses contextos, como vamos detalhar nos conceitos 4 e 5.
-
-**Fontes utilizadas:**
-
-- [pi-tui: Terminal UI Library — DeepWiki badlogic/pi-mono](https://deepwiki.com/badlogic/pi-mono/5-pi-tui:-terminal-ui-library)
-- [Terminal User Interface (pi-tui) — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/4-terminal-user-interface-(pi-tui))
-- [What I learned building an opinionated and minimal coding agent — Mario Zechner](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
-- [@mariozechner/pi-tui — npm](https://www.npmjs.com/package/@mariozechner/pi-tui)
-- [TUI Components — pi hochej.github.io](https://hochej.github.io/pi-mono/coding-agent/tui/)
-- [ANSI escape code — Wikipedia](https://en.wikipedia.org/wiki/ANSI_escape_code)
-- [Kitty keyboard protocol — sw.kovidgoyal.net](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)
-
-## 3. Dependências de ambiente do modo TUI
-
-Os conceitos anteriores estabeleceram o mecanismo de decisão (como o harness confirma o modo interativo via `stdin.isTTY` e ausência de flag) e a superfície que o TUI entrega (rendering diferencial, backbuffer, editor multi-linha, Kitty keyboard protocol, synchronized output). O que ainda não ficou explícito é a lista de contratos que o sistema operacional precisa honrar para que tudo aquilo funcione. Esta seção cataloga essas dependências na ordem em que o harness as consome — da mais fundamental à mais específica — porque é exatamente essa lista que vai aparecer, uma a uma, faltando, nos ambientes headless dos conceitos 4 e 5.
-
-A primeira dependência, e a mais fundamental, é a **presença de um TTY real anexado ao processo**. Quando Node.js inicializa um processo, ele examina o descritor de arquivo 0 (stdin) e verifica se ele aponta para um dispositivo do tipo terminal. Se sim, instancia `process.stdin` como um `tty.ReadStream` — uma subclasse de `stream.Readable` com métodos adicionais específicos de terminal, incluindo `setRawMode()`. Se stdin apontar para qualquer outra coisa (um pipe, um arquivo, `/dev/null`, um socket), `process.stdin` é instanciado como `stream.Readable` comum — sem `setRawMode`, sem `isTTY`, sem a infraestrutura de terminal. A verificação de `process.stdin.isTTY` que o conceito 1 descreveu é, na prática, a pergunta "o meu descritor 0 é um `tty.ReadStream`?" — e a resposta negativa descarta imediatamente o modo TUI antes mesmo de tentar qualquer operação de terminal.
-
-A segunda dependência é o **raw mode sobre stdin**. O modo "cooked" (ou canônico) é o padrão do kernel para terminais: caracteres digitados são acumulados numa linha, e o processo só os recebe quando o usuário pressiona Enter. O kernel processa Backspace, Ctrl+C (gerando SIGINT), Ctrl+Z (SIGTSTP) e eco de caracteres — tudo antes do dado chegar ao processo. Esse comportamento é exatamente o oposto do que um TUI precisa: o editor multi-linha da pi-tui precisa capturar cada tecla individualmente no momento em que é pressionada, incluindo setas, Home, End, Alt+Enter, e Ctrl+combinações que o modo canônico interceptaria antes de entregar. A solução é colocar stdin em **raw mode**: `process.stdin.setRawMode(true)` chama internamente `tcsetattr()` no POSIX (a chamada de sistema que reconfigura os atributos do terminal), desabilitando echo, buffering por linha, e processamento de sinais. O kernel passa a entregar cada byte assim que chega, sem interpretação. A armadilha concreta, já referenciada no conceito 1 como o erro `Raw mode is not supported`, é que `setRawMode()` só existe em instâncias de `tty.ReadStream` — em qualquer `stream.Readable` comum, o método simplesmente não está no protótipo, e a tentativa de invocá-lo lança `TypeError` ou, em versões antigas do Node.js, `Cannot read property 'setRawMode' of null`. O pi.dev não protege essa chamada com uma verificação antecipada de `isTTY` no caminho TUI (porque é desnecessário — se chegou no modo TUI, a checagem do conceito 1 já garantiu que stdin é TTY); mas o crash ao tentar `setRawMode` em ambiente sem TTY é exatamente o que um desenvolvedor encontra ao tentar rodar o harness em modo errado.
-
-```
-Modo canônico (cooked)         Raw mode
-────────────────────────────   ────────────────────────────────
-Entrada bufferizada por linha  Entrada byte a byte, imediata
-Backspace tratado pelo kernel  Backspace entregue como byte ao processo
-Ctrl+C → SIGINT                Ctrl+C → byte 0x03 entregue ao processo
-Echo automático pelo kernel    Processo decide se e o que exibir
-Enter entrega a linha          Qualquer tecla entrega imediatamente
-```
-
-A terceira dependência é o **controle ANSI sobre stdout**. O conceito 2 descreveu o rendering diferencial: o engine compara backbuffer com frame atual, move o cursor para a primeira linha divergente via `ESC[<linha>;<coluna>H`, redesenha, e usa `ESC[?2026h`/`ESC[?2026l` para synchronized output. Todas essas sequências são enviadas para stdout. Se stdout não estiver conectado a um emulador de terminal que interprete ANSI, o que chega do outro lado é lixo binário — os bytes `0x1B[H` impressos literalmente em vez de mover o cursor. Quando stdout está redirecionado para um arquivo ou para um pipe, o processo não recebe erro nenhum — `write(1, ...)` retorna sucesso, porque o kernel não sabe (nem se importa) se o destinatário interpreta ANSI. A saída simplesmente fica poluída com escape sequences ilegíveis. Isso significa que a terceira dependência é implícita: o harness não valida se stdout é um terminal; assume que sim, porque a checagem de `stdin.isTTY` filtrou os casos óbvios. Se alguém forçar stdin como TTY mas redirecionar stdout para um arquivo — cenário artificial, mas possível — o TUI vai rodar e produzir saída corrompida silenciosamente.
-
-A quarta dependência é o **stdin não redirecionado e exclusivo do processo**. O TUI precisa de stdin como canal exclusivo de captura de eventos de teclado, em raw mode, lido continuamente por um event listener. Dois cenários comuns quebram isso: (1) outro processo enviando dados para o stdin via pipe — o editor recebe os bytes do pipe misturados com eventos de teclado, produzindo comportamento indefinido; (2) o processo sendo iniciado com stdin apontando para `/dev/null` — o stream fecha imediatamente e o event loop do TUI para de receber eventos. A detecção de TTY via `isTTY` cobre o caso (1) parcialmente (pipe torna `isTTY` falsy) e o caso (2) inteiramente (stdin de `/dev/null` não é TTY). Mas existe um quinto cenário documentado como armadilha real em issues do Node.js: quando o usuário tem um terminal real mas `process.stdin` foi pausado por outro módulo antes de o TUI ser inicializado. A pi-tui assume que pode chamar `stdin.resume()` e adicionar seu próprio listener `on('data')` — se outro módulo chamou `stdin.destroy()` ou removeu o stream do event loop, o TUI não recebe eventos de teclado mas também não lança exceção, resultando num editor silenciosamente travado.
-
-Em síntese, as quatro dependências — TTY real no stdin, raw mode possível e disponível, ANSI interpretado no stdout, stdin exclusivo e não redirecionado — formam um conjunto que só existe intacto num contexto de terminal interativo genuíno. Remove qualquer uma e o TUI quebra, silenciosamente ou com exceção, dependendo de qual foi removida. Esse é o mapa que os conceitos 4 e 5 vão usar para explicar o que, especificamente, falta em Lambda e Fargate — não é um argumento vago de "headless não funciona", é a lista exata de contratos que cada serviço viola por design.
-
-**Fontes utilizadas:**
-
-- [TTY — Node.js v25.9.0 Documentation](https://nodejs.org/api/tty.html)
-- [TTY — Node.js v22.15.1 Documentation](https://nodejs.org/docs/latest-v22.x/api/tty.html)
-- [Entering raw mode — Build Your Own Text Editor (viewsourcecode.org)](https://viewsourcecode.org/snaptoken/kilo/02.enteringRawMode.html)
-- [Terminal mode — Wikipedia](https://en.wikipedia.org/wiki/Terminal_mode)
-- [setRawMode fails when running with non-TTY stdin — vadimdemedes/ink Issue #166](https://github.com/vadimdemedes/ink/issues/166)
-- [Error Raw mode is not supported in non-interactive environments — ruvnet/claude-flow Issue #213](https://github.com/ruvnet/claude-flow/issues/213)
-- [Color and TTYs — eklitzke.org](https://eklitzke.org/ansi-color-codes)
-- [Raw Mode and Input Processing — DeepWiki vadimdemedes/ink](https://deepwiki.com/vadimdemedes/ink/7.3-raw-mode-and-input-processing)
-
-## 4. O que acontece sem TTY
-
-O conceito 3 catalogou as quatro dependências de ambiente que o modo TUI exige — TTY real, raw mode, ANSI sobre stdout, stdin exclusivo. Este conceito descreve o que acontece quando essas dependências estão ausentes: não existe uma resposta única. O comportamento sem TTY divide-se em três padrões distintos — crash imediato, hang silencioso e fallback automático — e qual deles ocorre depende da combinação entre como o processo foi invocado, qual dependência está faltando, e em que ponto da inicialização do harness a ausência é detectada.
-
-O caminho mais frequentemente documentado é o **crash por raw mode**. Ele ocorre quando o harness já confirmou o modo TUI (porque nenhuma flag alternativa foi passada) e o processo chegou até o ponto em que precisa colocar stdin em raw mode para inicializar o editor multi-linha. Se `process.stdin` não é uma instância de `tty.ReadStream` — o que acontece sempre que stdin é um pipe, um arquivo, ou qualquer descritor diferente de um PTY real — a chamada `setRawMode(true)` falha. Em versões modernas do Node.js, o método `setRawMode` simplesmente não existe no protótipo de `stream.Readable` comum; a tentativa de invocá-lo lança `TypeError: process.stdin.setRawMode is not a function`. Em algumas versões mais antigas do Node.js ou em contextos específicos de integração (como o wrapper de terminal do VS Code), a mensagem é diferente mas igualmente fatal: `Error: Raw mode is not supported on the current process.stdin`. Esse é o erro mais documentado em issues de CLIs baseados em Ink — a família inclui claude-code, ruvnet/claude-flow, e qualquer outro harness que use react-ink como camada de TUI — e é exatamente o que o pi.dev produziria se o guard de `isTTY` do conceito 1 não estivesse em frente ao caminho TUI. O crash é imediato, não há retry nem degradação: o processo encerra com código de saída não-zero antes de processar qualquer prompt.
-
-O segundo padrão é o **hang silencioso por stdin de `/dev/null`**. Esse cenário é menos intuitivo do que o crash porque o processo *parece* funcionar: não lança exceção, não imprime erro, simplesmente não avança. O que acontece internamente é o seguinte. Quando stdin aponta para `/dev/null`, Node.js instancia `process.stdin` como um `stream.Readable` comum (não é TTY), então `isTTY` é falsy e o guard do conceito 1 deveria interceptar o modo TUI antes de chegar no raw mode. O harness entra então em algum modo alternativo ou simplesmente não tem o que processar — mas o event loop do Node.js permanece ativo. `stream.Readable` não fecha automaticamente quando a fonte subjacente é `/dev/null`; o stream pode continuar registrado no event loop esperando dados. Se o harness adicionou um listener `on('data')` ou `on('end')` antes de verificar TTY, ou se algum módulo de terceiro (como uma extensão) registrou um listener no stdin, o event loop não drena e o processo fica vivo sem produzir nada. Do ponto de vista de quem invocou o processo — um orquestrador Lambda, um shell script — o processo simplesmente trava sem output e sem saída, até que um timeout externo o kill. Em sistemas de integração contínua, esse padrão é a origem da classe de bugs de "job que nunca termina" — distinto do crash, que ao menos falha rápido e deixa logs.
-
-O terceiro padrão — e o mais relevante para o design desta POC — é o **fallback automático para print mode**. Quando nenhuma flag explícita foi passada e `stdin.isTTY` é falsy, a função `resolveAppMode` do pi.dev não tenta forçar o TUI: ela reconhece a ausência de TTY como sinal de contexto não-interativo e resolve o modo como print. Isso significa que uma invocação do tipo `echo "meu prompt" | pi` ou `pi < prompt.txt` não crasheia — ela entrega uma resposta em batch (uma única geração, sem sessão persistida) e termina. O fallback é gracioso *desde que o prompt venha junto com o stdin pipe* — o harness tem algo para processar. Se o stdin piped for vazio (como em `cat /dev/null | pi`) ou se o prompt só existir como argumento (como em `pi -p "prompt"` com stdin de um pipe vazio), o comportamento depende de como o harness trata a ausência de conteúdo; na prática, o modo print encerra sem geração nenhuma ou com erro de validação de input.
-
-A distinção entre crash, hang e fallback pode ser resumida pelo que está presente ou ausente em cada situação:
-
-```
-Cenário de invocação              stdin.isTTY   Modo resolvido   Comportamento
-────────────────────────────────  ────────────  ───────────────  ─────────────────────────────
-$ pi                              true          TUI              OK — sessão interativa
-$ echo "..." | pi                 false         Print (fallback) Gera resposta e termina
-$ cat /dev/null | pi              false         Print (fallback) Sem input → termina vazio
-$ pi < /dev/null                  false         Print (fallback) Sem input → termina vazio
-stdin=/dev/null sem pipe          false         Print (fallback) Event loop pode travar (*)
-Forçar TUI com stdin não-TTY (**)  false        TUI (forçado)    Crash: Raw mode not supported
-```
-
-`(*) O hang por event loop ocorre quando stdin de /dev/null não fecha o stream antes que listeners sejam registrados por algum módulo de inicialização.`
-`(**) Cenário artificial: nenhuma flag do pi.dev força TUI explicitamente; o harness descobre isso via resolveAppMode antes de chegar no raw mode.`
-
-Uma armadilha real documentada em projetos que usam CLIs baseados em Ink (a mesma família de rendering que o pi-tui) é o crash por raw mode ocorrer **mesmo com a flag `-p` passada**. O mecanismo é o seguinte: alguns módulos de extensão ou plugins inicializam o TUI durante o bootstrap do processo — antes que a resolução de modo tenha ocorrido — e registram listeners de raw mode no stdin de forma incondicional. Quando a flag `-p` chega depois, o modo print é resolvido corretamente, mas o listener de raw mode já tentou `setRawMode(true)` no stdin não-TTY durante a inicialização e já crashou. Esse padrão é exatamente o que foi reportado no issue claude-mem/claude-code #1482: o plugin `claude-mem` força a inicialização do Ink mesmo em `--print` mode, fazendo com que qualquer invocação com stdin piped retorne o erro de raw mode, mesmo quando a flag de modo não-interativo foi explicitamente passada. No pi.dev, o sistema de extensões carrega extensões após a resolução de modo — o que evita esse race de inicialização — mas é um ponto de atenção para quem escrever extensões customizadas para a POC.
-
-O que torna esses três padrões relevantes para os capítulos 4 e 5 é que Lambda e Fargate não entram no cenário de crash ou de hang — eles caem no fallback, mas de um jeito que não serve para uma POC multi-turno. Lambda inicializa o processo handler sem terminal anexado, com stdin configurado pela runtime como um pipe (o event payload chega via variáveis de ambiente e canais internos da runtime, não via stdin do processo filho). O harness detecta ausência de TTY, resolve print mode, e termina após a primeira resposta — exatamente o comportamento correto para o conceito 2 deste capítulo (Print mode) mas incompatível com sessões persistidas e múltiplos turnos, que é o objetivo da POC. Essa é a ponte para o conceito 5: não é que Lambda crasheia ao tentar rodar o TUI, é que o TUI simplesmente nunca é tentado — e o modo que surge no lugar (print) não suporta o que a POC precisa.
-
-**Fontes utilizadas:**
-
-- [CLI crashes with "Raw mode is not supported" error when piping input — anthropics/claude-code Issue #5925](https://github.com/anthropics/claude-code/issues/5925)
-- [Raw mode is not supported on current process.stdin — anthropics/claude-code Issue #1072](https://github.com/anthropics/claude-code/issues/1072)
-- [Error Raw mode is not supported in non-interactive environments — ruvnet/claude-flow Issue #213](https://github.com/ruvnet/claude-flow/issues/213)
-- [claude-mem plugin breaks claude --print (pipe mode) on Windows — thedotmack/claude-mem Issue #1482](https://github.com/thedotmack/claude-mem/issues/1482)
-- [setRawMode fails when running with non-TTY stdin — vadimdemedes/ink Issue #166](https://github.com/vadimdemedes/ink/issues/166)
-- [TTY — Node.js v25.9.0 Documentation](https://nodejs.org/api/tty.html)
-- [Getting Started — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/1.1-getting-started)
-- [Node process hangs when stdin is piped — nodejs/node Issue #56537](https://github.com/nodejs/node/issues/56537)
-
-## 5. Por que Lambda e Fargate não têm TTY por design
-
-O conceito 4 descreveu o que acontece quando o harness encontra ausência de TTY — crash, hang ou fallback — e concluiu que Lambda e Fargate caem no fallback silencioso para print mode. O que falta explicar é por que esses serviços chegam nessa situação: não é negligência de configuração nem limitação acidental — é uma consequência direta do modelo de execução que cada um deles adota por razões de arquitetura, isolamento e custo.
-
-O ponto de partida para entender Lambda é entender que uma função Lambda não é um processo que você invoca passando uma conexão de terminal. O fluxo começa no serviço de invocação da AWS — via console, via chamada de API, via evento de outro serviço — e chega ao processo handler por um canal completamente diferente de um PTY. O ambiente de execução Lambda é um microVM baseado no Firecracker, um hipervisor KVM open source desenvolvido pela AWS. Dentro desse microVM roda uma instância mínima de Amazon Linux com um processo init customizado escrito em Go chamado Rapid, que assume o PID 1. Rapid orquestra o ciclo de vida completo: carrega o runtime (o bootstrap Node.js, para funções Node.js), gerencia extensões, e comunica com os serviços de controle da AWS via sockets internos cujos file descriptors são marcados com `FD_CLOEXEC` para não vazar para o código do usuário. O payload de invocação — o evento JSON — chega ao runtime via uma API HTTP local (`http://127.0.0.1:9001`) que o runtime polling: o processo Node.js faz um `GET /runtime/invocation/next`, bloqueia até receber o próximo evento, processa, e faz `POST /runtime/invocation/{id}/response`. Em nenhum ponto dessa cadeia um PTY é alocado. Não existe um emulador de terminal, não existe um par master/slave de PTY, e `/dev/pts/` não tem entradas disponíveis para o código do usuário — como o erro `OSError: out of pty devices` documenta quando pexpect (que depende de `pty.fork()`) tenta alocar um PTY dentro de Lambda. O stdin do processo Node.js, nesse contexto, não aponta para um `tty.ReadStream` — ele aponta para nada útil, ou simplesmente não é fonte de entrada de nenhum dado relevante para a função, já que toda entrada real chega via o polling da Lambda Runtime API.
-
-```
-Invocação Lambda (Node.js handler)
-
-  AWS Service Event
-       │
-       ▼
-  Lambda Runtime API (HTTP :9001)
-       │  GET /runtime/invocation/next  ← bootstrap Node.js polling
-       │  POST /runtime/invocation/{id}/response
-       ▼
-  handler(event, context) → retorna response
-       │
-  Sem PTY, sem emulador de terminal
-  process.stdin.isTTY === undefined
-  process.stdin não é tty.ReadStream
-```
-
-Fargate tem uma história ligeiramente diferente — e o detalhe importa porque Fargate é uma alternativa real para hospedar o pi.dev com processo de longa duração, como vamos explorar no capítulo 4. No Fargate, o modelo é Docker: você define uma task definition com um container definition, e o ECS provisiona o container usando o Docker daemon gerenciado pela infraestrutura Fargate. O entrypoint do container — o processo que vira PID 1 ou que é iniciado via `CMD` — sobe sem TTY alocado por padrão. O padrão do Docker é rodar containers sem flag `-t` (pseudoTerminal), o que significa que o container recebe stdin conectado a `/dev/null` (ou fechado) e stdout/stderr conectados a pipes de log. O parâmetro `pseudoTerminal: true` na container definition do ECS é o equivalente de `docker run --tty` — ele instrui o daemon Docker a criar um par PTY e conectar o processo ao lado slave. Esse parâmetro existe na API do ECS, mas sua ausência é o estado padrão de qualquer workload de produção no Fargate: não faz sentido alocar um PTY para um servidor HTTP, um worker de fila ou um handler de agente que recebe eventos via chamada HTTP — nenhum desses processos lê stdin como terminal. A consequência para o pi.dev rodando em Fargate é exatamente a mesma que em Lambda: `process.stdin.isTTY` é falsy, `setRawMode` não está disponível, e o harness detecta contexto não-interativo no primeiro `resolveAppMode`.
-
-Há uma distinção importante entre os dois serviços que o `STRUCT.md` reserva para o capítulo 4 (Lambda ou Fargate Para Hospedar Pi.dev): Lambda é mais radical na ausência de PTY (não há dispositivos `/dev/pts/` disponíveis de forma alguma no microVM do código do usuário — o próprio `openpty()` do OS falha), enquanto Fargate permite que você aloque um PTY explicitamente via `pseudoTerminal: true` se realmente precisar. Isso não significa que o modo TUI do pi.dev se tornaria utilizável com `pseudoTerminal: true` — o TUI foi projetado para presença humana real na outra ponta, com teclado, emulador de terminal com suporte a Kitty keyboard protocol e synchronized output, redimensionamento de janela e interação contínua. Mesmo que o container Fargate fosse inicializado com um PTY alocado, não haveria nenhum humano conectado a esse PTY durante a execução de um request HTTP — o PTY seria um canal vazio sem emulador de terminal real na outra ponta. O conceito aqui não é técnico-impossível (o PTY pode ser criado); é arquiteturalmente sem sentido: um cliente enviando um prompt via HTTP não é um usuário num terminal.
-
-O que esses dois serviços têm em comum — e que os distingue de um terminal local — é a ausência de um **canal de teclado interativo em tempo real**. Lambda processa um evento e retorna uma resposta dentro de uma janela de tempo; Fargate roda um processo que serve requisições via protocolo de rede. Em nenhum dos dois modelos existe um humano na outra ponta de um `stdin` aguardando emitir bytes à medida que pensa. O modo TUI do pi.dev — com seu editor multi-linha, rendering diferencial de backbuffer e feedback progressivo de tool execution — é uma superfície inteiramente construída para esse canal interativo. Sem ele, o TUI não apenas não funciona tecnicamente: ele não tem propósito. A detecção de TTY do conceito 1 resolve corretamente nesses ambientes: ausência de `stdin.isTTY` não é um falso negativo, é um diagnóstico preciso de que não existe sessão interativa para servir.
-
-**Fontes utilizadas:**
-
-- [Understanding the Lambda execution environment lifecycle — AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html)
-- [Lambda internals (Part one) — ClearVector](https://www.clearvector.com/blog/lambda-internals/)
-- [out of pty devices on AWS Lambda — pexpect/pexpect Issue #654](https://github.com/pexpect/pexpect/issues/654)
-- [ContainerDefinition: pseudoTerminal — Amazon ECS API Reference](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ContainerDefinition.html)
-- [Amazon ECS task definition parameters for Fargate — AWS ECS Developer Guide](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html)
-- [ECS vs EKS: how to use stdin and tty with ECS tasks — AWS re:Post](https://repost.aws/questions/QUY2PpSbJQQaCWs7r4J14mgg/ecs-vs-eks-how-to-use-stdin-and-tty-with-ecs-tasks)
-- [The Interactive and TTY Options in docker run — Baeldung](https://www.baeldung.com/linux/docker-run-interactive-tty-options)
-
-## 6. Quando o TUI ainda vale no contexto desta POC
-
-O conceito 5 encerrou com uma frase que merece ser retomada: a detecção de TTY do harness não é um falso negativo em Lambda e Fargate — é um diagnóstico preciso de que não existe sessão interativa para servir. Isso poderia levar à conclusão de que o modo TUI é irrelevante para quem está construindo esta POC. Seria uma conclusão errada, e entender por que é errada delimita com precisão o papel que o TUI vai ocupar no seu fluxo de trabalho.
-
-O TUI é descartado na execução em produção. Na construção da POC — no ciclo de desenvolvimento local antes de qualquer deploy — ele é a ferramenta mais eficiente disponível para uma categoria específica de problema: observar o comportamento do agente com uma combinação nova de prompt, model, skill, extension ou conjunto de tools, de forma interativa e iterativa. Nenhum dos modos headless oferece o mesmo ciclo de feedback para esse propósito.
-
-O caso de uso central é a iteração de prompts e system prompts. Quando você está escrevendo o prompt do agente que vai viver no handler da POC — definindo persona, restrições, formato de resposta, instruções de uso das tools — você precisa ver o agente respondendo em tempo real, com feedback progressivo de cada token. O modo TUI entrega exatamente isso: o rendering diferencial descrito no conceito 2 atualiza o terminal a cada token recebido do modelo. Você vê onde o agente hesita, onde quebra o formato esperado, onde aluça sobre a disponibilidade de uma tool que não foi declarada — e você itera o prompt imediatamente, sem esperar o turno completo, sem reempacotar um payload HTTP e sem aguardar cold start de Lambda. O ciclo de feedback é a ordem de grandeza mais rápido do que qualquer loop de deploy.
-
-O segundo caso de uso é o debugging de tools antes da integração. As tools que vão entrar na POC — `bash`, `read`, `write`, `edit`, e as extensões customizadas que você vier a construir — podem ser testadas localmente em TUI com `pi` puro, antes de qualquer embedding no handler. O feedback em tempo real do `ToolExecutionComponent` (que o conceito 2 descreveu) exibe o status da execução de cada ferramenta à medida que ocorre: você vê a tool sendo chamada, os argumentos parseados incrementalmente, o resultado chegando. Se uma tool retorna um resultado que o agente interpreta de forma inesperada — causando uma segunda chamada desnecessária, por exemplo —, você identifica o problema no TUI antes de ter que instrumentar o handler em Lambda e cavar nos CloudWatch Logs. Uma prática documentada no próprio pi.dev para debugging multi-sessão é ativar `PI_TUI_WRITE_LOG` — uma variável de ambiente que instrui o harness a escrever um log file por instância de TUI, permitindo inspecionar o que foi enviado e recebido sem depender de instrumentação externa.
-
-O terceiro caso de uso é a exploração da árvore de sessão. O conceito central do capítulo 2 deste livro — o modelo de sessão como árvore JSONL com `id` e `parentId` — tem representação visual direta no TUI via o comando `/tree`. O comando abre um navegador inline na sessão JSONL armazenada em `~/.pi/agent/sessions/`, permite ver o grafo de turnos, fazer fork de qualquer ponto anterior via `/fork`, e continuar a conversa a partir de um branch alternativo, tudo preservado no mesmo arquivo. Para quem está construindo um `SessionManager` customizado para a POC (que o capítulo 9 vai cobrir), explorar sessões reais geradas pelo TUI é o caminho mais direto para entender a estrutura dos dados que o `SessionManager` vai precisar ler, escrever e indexar — sem precisar escrever código de parsers provisórios.
-
-O limite da utilidade do TUI para esta POC tem três bordas claras. Primeira: **o TUI não emula o contexto de produção**. O harness rodando localmente em TUI usa o filesystem local para armazenar sessões, carrega variáveis de ambiente da sua shell, tem acesso direto ao workspace. O handler em Lambda ou Fargate vai rodar numa instância isolada, com variáveis de ambiente injetadas via task definition ou Lambda configuration, com sessões armazenadas em EFS ou S3. Comportamentos que funcionam em TUI mas quebram em produção — por exemplo, uma tool que lê um arquivo local que não existe no container — não aparecem nos testes de TUI. Segunda: **o TUI não testa o caminho RPC ou SDK**. A integração do harness no handler — seja via `pi --mode rpc` wrappado em processo, seja via embedding do SDK com `createAgentSession` — tem seus próprios pontos de falha: framing de mensagens, correlation de eventos, serialização de results de tools. Esses pontos só aparecem quando o caminho headless é exercitado diretamente, não no TUI. Terceira: **o TUI não testa o fluxo HTTP da POC**. O comportamento do agente ao receber um payload via API Gateway, ser hidratado com o `sessionId` correto, executar um turno, e serializar a resposta de volta ao gateway são comportamentos que pertencem ao handler, não ao harness em modo interativo. O TUI ajuda a refinar o que o agente faz; ele não valida como o agente é servido.
-
-A forma pragmática de posicionar o TUI no ciclo de desenvolvimento da POC é: TUI é o ambiente de rascunho. Você usa o TUI para encontrar o prompt certo, confirmar que as tools se comportam como esperado com o modelo escolhido, e entender a estrutura das sessões que o `SessionManager` vai persistir. Quando esses três insumos estão calibrados, você os traslada para o handler e executa o ciclo de integração em headless. O TUI não é o destino — é a bancada de instrumentos antes do laboratório.
-
-**Fontes utilizadas:**
-
-- [pi-mono/packages/coding-agent/README.md — badlogic/pi-mono](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)
-- [What I learned building an opinionated and minimal coding agent — Mario Zechner](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
+- [Pi Coding Agent — README oficial (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)
 - [Getting Started & CLI Reference — DeepWiki badlogic/pi-mono](https://deepwiki.com/badlogic/pi-mono/4.1-getting-started-and-cli-reference)
-- [@mariozechner/pi-coding-agent — npm](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)
-- [Pi: The Minimal Agent Within OpenClaw — Armin Ronacher](https://lucumr.pocoo.org/2026/1/31/pi/)
-- [pi-mono/packages/coding-agent/CHANGELOG.md — badlogic/pi-mono](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/CHANGELOG.md)
+- [Terminal User Interface (pi-tui) — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/4-terminal-user-interface-(pi-tui))
+- [Pi Coding Agent — Sandbox Analysis Report (Agent Safehouse)](https://agent-safehouse.dev/docs/agent-investigations/pi)
+- [What I learned building an opinionated and minimal coding agent — Mario Zechner](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
+
+## 2. Rendering diferencial e editor multi-linha — como o TUI atualiza só regiões modificadas do terminal (sem flicker, sem screen clear) e o que o editor de input oferece (syntax highlighting, slash commands, autocomplete de caminhos)
+
+O `InteractiveMode` não escribe para stdout diretamente — cada peça de conteúdo visível (resposta do modelo, spinner de loading, footer com tokens) é uma instância de `Component` na árvore da `TUI`. O ponto que diferencia essa arquitetura de um print simples é o motor de rendering diferencial: a cada ciclo, a `TUI` chama `render(width)` em cada componente, compara as linhas resultantes com o buffer das linhas anteriores (`previousLines`), e emite para o terminal **apenas as linhas que mudaram**. Linhas idênticas não geram nenhum byte de saída. Quando o conteúdo encolhe (ex: um spinner que some ao fim da tool call), as linhas excedentes são explicitamente apagadas via ANSI — sem que o cursor precise voltar ao topo e redesenhar tudo.
+
+Para eliminar o artefato visual de linhas intermediárias aparecendo enquanto o diff é gravado, o pi-tui envolve cada ciclo de atualização nas sequências `CSI ?2026h` / `CSI ?2026l` — o protocolo de "synchronized output" (DEC mode 2026). A ideia é simples: `?2026h` instrui o terminal a acumular todo output sem pintar nada; `?2026l` libera o buffer de uma vez. O resultado é que o usuário enxerga o estado final de cada frame, nunca o estado parcial. Terminais modernos (kitty, ghostty, iTerm2, versões recentes de Terminal.app e Windows Terminal) suportam o DEC 2026; terminais sem suporte ignoram as sequências sem quebrar nada — o rendering apenas perde a garantia de atomicidade, mas não trava.
+
+O componente de editor multi-linha (classe `Editor`) é quem traduz input de teclado em texto estruturado. Ele não usa readline — implementa diretamente: navegação por grafema via `Intl.Segmenter` (o que dá suporte correto a emojis e caracteres wide de CJK), kill ring no estilo Emacs (`Ctrl+K` mata até fim de linha, `Ctrl+Y` cola o último kill), undo stack com coalescing de inserções consecutivas (não empilha um undo por caractere digitado), e "paste markers" para blocos colados grandes (o bloco vira `[paste #1 +12 lines]`, um objeto atômico que o cursor pula inteiro em vez de navegar linha por linha). O Shift+Enter cria nova linha sem submeter; Enter submete o prompt.
+
+Para input de teclado preciso, o editor detecta suporte ao Kitty keyboard protocol (CSI-u sequences) e o ativa quando disponível. Sem ele, Esc e Alt+tecla compartilham a mesma sequência de bytes no terminal; com o protocolo, cada tecla (incluindo modificadores e eventos de key-release distintos de key-press) chega com identificação unívoca. Isso é o que torna possível distinções como Shift+Enter sem ambiguidade.
+
+O autocomplete opera sobre dois namespaces: `/` para slash commands (`/model`, `/resume`, `/fork`, `/settings`, `/tree`) e `@` para caminhos de arquivo. Para os caminhos, o `CombinedAutocompleteProvider` chama `fd` (o binário de busca de arquivos com `.gitignore`-awareness) para listar candidatos, aplica fuzzy matching e apresenta sugestões no terminal em tempo real. Syntax highlighting no editor é rendering por componente — cada linha do `Editor` é renderizada com ANSI colors de acordo com o tipo de conteúdo (código dentro de backticks, paths, etc.).
+
+Toda essa superfície — frame diff, synchronized output, Kitty protocol, kill ring, autocomplete via `fd` — é código que assume que `process.stdout` tem propriedades de terminal: suporta ANSI, tem dimensões acessíveis via `process.stdout.columns`/`rows`, e responde a sequências de controle de cursor. É precisamente esse conjunto de pressupostos que o conceito seguinte vai desmontar ao definir o que é um TTY e o que acontece quando ele não está presente.
+
+**Fontes utilizadas:**
+
+- [Editor and Input Components — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/4.2-editor-and-input-components)
+- [pi-tui Terminal UI Library — DeepWiki badlogic/pi-mono](https://deepwiki.com/badlogic/pi-mono/5-pi-tui:-terminal-ui-library)
+- [Terminal User Interface (pi-tui) — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/4-terminal-user-interface-(pi-tui))
+- [@mariozechner/pi-tui — npm](https://www.npmjs.com/package/@mariozechner/pi-tui)
+- [Build your own Command Line with ANSI escape codes — Li Haoyi](https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html)
+- [What I learned building an opinionated and minimal coding agent — Mario Zechner](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
+
+## 3. O que é um TTY e por que o modo TUI depende dele — a relação entre `tty.isatty()`/`process.stdout.isTTY`, controle ANSI, e a superfície de terminal que o rendering diferencial e o editor precisam para funcionar
+
+TTY é a abreviação de TeleTYpe — os teletipos eletromecânicos do século XX que eventualmente viraram terminais de vídeo e, depois, emuladores de terminal em software. O que persiste do nome é o conceito: um TTY é um arquivo de dispositivo (`/dev/pts/N` num pseudoterminal moderno) que funciona como canal bidirecional entre o processo e um usuário humano, mediado por uma camada de kernel chamada *line discipline*. Essa camada interpreta caracteres especiais (Backspace, Ctrl+C, Ctrl+Z), controla o fluxo de bytes, e expõe as dimensões do terminal (colunas × linhas) via `ioctl`. Quando um processo escreve bytes para esse arquivo e quem está na outra ponta é um terminal emulator, as sequências ANSI são interpretadas como comandos de cursor; quando quem está na outra ponta é um pipe ou um arquivo de log, os mesmos bytes chegam como texto literal — lixo no log, bytes corretos no terminal.
+
+A verificação de presença de TTY é a primeira coisa que qualquer aplicação de linha de comando precisa fazer antes de emitir sequências de controle. No kernel Unix, a syscall `isatty(fd)` chama `ioctl(fd, TCGETS, ...)` internamente: se o file descriptor está associado a um TTY, o `ioctl` responde com os atributos do terminal; se não, retorna `ENOTTY`. Em Node.js isso vira `tty.isatty(fd)` na camada de módulo ou `process.stdout.isTTY` como propriedade de conveniência já calculada pelo runtime — `true` quando stdout está conectado a um TTY, `undefined` quando está redirecionado para pipe, arquivo ou `/dev/null`.
+
+A distinção entre os dois casos não é cosmética. Quando `process.stdout.isTTY` é `true`, o objeto `process.stdout` é uma instância de `tty.WriteStream` — uma classe que herda de `net.Socket` mas expõe métodos adicionais: `clearLine()`, `cursorTo(x, y)`, `moveCursor(dx, dy)`, `getWindowSize()`, e o evento `resize` emitido sempre que o usuário redimensiona a janela do terminal. Esses métodos existem apenas em instâncias de `tty.WriteStream`; num stdout não-TTY, o objeto retorna ao tipo base e nenhum desses métodos opera — chamá-los produz no-op ou erro. Da mesma forma, `process.stdin.isTTY` diz se o stdin é um `tty.ReadStream`, que expõe `setRawMode(true)` — o que desativa o processamento de linha do kernel e entrega cada byte de teclado diretamente ao processo, sem buffer de linha, sem eco automático.
+
+O rendering diferencial do `## 2.` depende exatamente desta superfície. `clearLine()` e `moveCursor()` são as primitivas que permitem ao motor de diff apagar linhas obsoletas e posicionar o cursor para sobrescrever só as linhas modificadas — sem elas, a única saída possível é `console.log`, que avança o scroll e não permite reescrita no lugar. O evento `resize` alimenta o recálculo de `width` que os componentes da TUI usam em cada chamada de `render(width)`. O `setRawMode(true)` no stdin é o que permite ao `Editor` receber teclas individuais (Tab, Shift+Enter, Ctrl+K) sem que o kernel as absorva na linha de edição própria dele. O `process.stdout.columns`/`rows` — acessíveis apenas em TTY — é o que determina o tamanho do viewport para o layout do footer e para o wrapping das respostas do modelo.
+
+Em síntese, o modo TUI do pi.dev não usa TTY como preferência estética — ele requer `process.stdout.isTTY === true` porque cada primitiva que os conceitos `## 1.` e `## 2.` descreveram (`render`, `clearLine`, `moveCursor`, `setRawMode`, `resize`, `columns`) só existe quando esse file descriptor está conectado a um pseudoterminal real. O conceito seguinte mostra o que acontece na prática quando nenhum desses pressupostos se cumpre — o comportamento do harness sem TTY.
+
+**Fontes utilizadas:**
+
+- [TTY | Node.js v22 Documentation](https://nodejs.org/api/tty.html)
+- [The TTY demystified — Linus Åkesson](https://www.linusakesson.net/programming/tty/)
+- [What do PTY and TTY Mean? — Baeldung on Linux](https://www.baeldung.com/linux/pty-vs-tty)
+- [Linux terminals, tty, pty and shell — DEV Community](https://dev.to/napicella/linux-terminals-tty-pty-and-shell-192e)
+- [Pseudoterminal — Wikipedia](https://en.wikipedia.org/wiki/Pseudoterminal)
 
 <!-- AULAS-END -->
+
+## 5. Por que Lambda e Fargate não fornecem TTY — como esses runtimes servem processos sem terminal anexado (I/O redirecionado, sem alocação de pty), tornando o modo TUI impossível de instanciar
+
+O `## 4.` descreveu o que acontece quando um processo que depende de TTY roda sem ele — crash por `TypeError`, hang no event loop, ou saída silenciosa. O que falta explicar é por que Lambda e Fargate produzem esse estado estruturalmente, não por acidente de configuração.
+
+No Lambda, o runtime não cria nenhum pseudoterminal. A inspeção de `/proc/1/fd` dentro de um ambiente Lambda ativo revela exatamente:
+
+```
+0 -> socket:[...]    # stdin
+1 -> pipe:[...]      # stdout
+2 -> pipe:[...]      # stderr
+```
+
+Stdin é um socket — o canal pelo qual o serviço de controle do Lambda entrega o payload do evento ao processo. Stdout e stderr são pipes capturados pelo wrapper do runtime Node.js, que intercepta as escritas e as encaminha para o `lambda_runtime.log_bytes()` antes de enviá-las ao CloudWatch. Nenhum dos três file descriptors passa pelo teste `isatty(fd)` — todos retornam `ENOTTY` porque nenhum está associado a um dispositivo `/dev/pts`. Consequentemente, `process.stdout.isTTY` é `undefined` e `process.stdin.isTTY` é `undefined` em qualquer função Node.js executada no Lambda. Isso não é comportamento configurável — é a arquitetura de I/O que o serviço usa para capturar saída e entregar eventos.
+
+No Fargate, o mecanismo é diferente mas o resultado é o mesmo. Um task Fargate executa um container Docker cujo processo principal tem stdout e stderr conectados aos pipes do daemon Docker, que os encaminha para o driver de logging configurado (CloudWatch, Firelens, etc.). O parâmetro `pseudoTerminal` na definição de container (`ContainerDefinition.pseudoTerminal` na API do ECS) controla se o daemon Docker executa `docker run --tty` ao criar o container — o que alocaria um PTY e faria `process.stdout.isTTY` retornar `true` dentro do processo. O valor padrão é `false`. Para uma task de workload headless — o que descreve qualquer handler de API Gateway — ninguém define `pseudoTerminal: true` porque o código não interage com usuário nenhum; nenhum humano está na outra ponta. Definir `pseudoTerminal: true` num container de produção sem processo que consuma o TTY seria anomalia de configuração, não solução.
+
+A diferença entre Lambda e Fargate, neste ponto específico, é de grau: Lambda não expõe sequer a opção de alocar PTY (não existe parâmetro equivalente ao `pseudoTerminal` do ECS); Fargate expõe o parâmetro mas nenhuma arquitetura headless sensata o ativa. O resultado prático é idêntico — `process.stdout.isTTY === undefined`, `process.stdin.isTTY === undefined`, e todas as primitivas que os conceitos `## 1.` a `## 3.` descreveram (`setRawMode`, `clearLine`, `moveCursor`, `resize`, `columns`) ficam indisponíveis ou retornam no-op.
+
+Há ainda um fator adicional no Fargate que reforça a impossibilidade: mesmo que alguém ativasse `pseudoTerminal: true` por engano, o container de uma task Fargate não é interativo por definição — não há sessão SSH, não há usuário digitando. O PTY seria alocado mas nunca consumido. O resultado seria um PTY fantasma num processo que nunca espera input humano, o que não resolve nada do ponto de vista do pi.dev (que precisa que o usuário esteja efetivamente presente para o modo TUI fazer sentido).
+
+Para a POC deste livro, Lambda e Fargate são os dois candidatos de runtime discutidos no `04-lambda-ou-fargate-para-hospedar-pidev/`. Em ambos, o modo TUI é descartado pela mesma razão técnica que o `## 4.` formalizou: o harness lança `TypeError` ou trava no event loop sem TTY. O subcapítulo `05-o-subset-que-importa-para-a-poc-headless/` vai usar exatamente esse raciocínio — Lambda sem TTY, Fargate sem TTY por padrão — como argumento de eliminação do modo TUI antes de declarar as superfícies que a POC vai de fato usar.
+
+**Fontes utilizadas:**
+
+- [Reverse engineering AWS Lambda — Denial of Services](https://www.denialof.services/lambda/)
+- [ContainerDefinition — Amazon ECS API Reference (pseudoTerminal)](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ContainerDefinition.html)
+- [Amazon ECS task definition parameters for Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html)
+- [NEW – Using Amazon ECS Exec to access your containers on AWS Fargate and Amazon EC2](https://aws.amazon.com/blogs/containers/new-using-amazon-ecs-exec-access-your-containers-fargate-ec2/)
+- [The Interactive and TTY Options in docker run — Baeldung on Linux](https://www.baeldung.com/linux/docker-run-interactive-tty-options)
+- [TTY | Node.js Documentation](https://nodejs.org/api/tty.html)
+
+## 6. Quando o TUI ainda é útil no contexto desta POC — o papel do modo TUI em desenvolvimento local (debugging de prompts e tools, exploração de comportamento do agente) antes de subir para AWS, e o limite claro onde ele para de servir
+
+Os conceitos `## 4.` e `## 5.` fecharam o argumento de eliminação: sem TTY, o modo TUI crash, trava, ou sai silenciosamente — e Lambda e Fargate nunca fornecem TTY por padrão. Dito isso, o modo TUI não desaparece do ciclo de vida desta POC; ele só muda de papel. Antes de qualquer deploy na AWS, há uma fase de desenvolvimento local onde o TUI é a ferramenta certa.
+
+O caso de uso central é **iterar sobre o comportamento do agente antes de comprometer com uma superfície headless**. Quando você está ajustando um system prompt, testando se uma skill responde como esperado, ou verificando se o agente usa corretamente uma tool que você adicionou, o TUI oferece o que nenhum modo headless oferece: feedback visual em tempo real de cada tool call emitido, o texto do modelo chegando token a token, e a possibilidade de mandar uma mensagem de steering ("pare e refaça assim") enquanto o agente ainda está em execução — o harness entrega a mensagem no fim do tool call corrente, antes de iniciar o próximo. Nenhum desses gestos existe no modo Print (que sai após uma resposta) nem no modo RPC/SDK (onde você é o processo controlador e precisa implementar tudo isso você mesmo).
+
+O segundo caso de uso é **explorar o modelo de sessão em árvore antes de implementar a persistência**. O comando `/fork` cria uma nova sessão a partir de qualquer ponto do histórico, copiando o caminho ativo até aquele nó e abrindo o prompt pré-preenchido com a mensagem selecionada — o que permite testar variações de um prompt sem desperdiçar contexto na sessão principal. O `/tree` navega a árvore in-place, permitindo voltar a qualquer bifurcação anterior e retomar de lá. Para um engenheiro que ainda não entende visceralmente como sessões com `id`/`parentId` se comportam ao fazer fork — tema que o subcapítulo `02-o-modelo-de-sessao-como-arvore-jsonl/` aprofunda — brincar com `/fork` e `/tree` no TUI é a forma mais rápida de desenvolver o modelo mental correto antes de implementar a persistência no S3 ou EFS.
+
+O terceiro caso de uso é **debugging de tools específicas que a POC vai usar**. Se você está construindo uma skill que o agente vai invocar como tool no Lambda, você a testa localmente no TUI primeiro: invoca o agente com a skill ativa, pede que ele use a tool, e observa ao vivo se o input/output está correto, se o harness serializa a resposta da forma esperada, e se o agente consegue continuar o raciocínio com o resultado. Só depois que a tool se comporta como esperado localmente é que faz sentido embutir o agente via SDK num handler e testar o fluxo headless.
+
+O limite onde o TUI para de servir é preciso: no momento em que a sessão sai do seu terminal e entra num processo gerenciado pela AWS. Não há modo gradual — ou você tem TTY (desenvolvimento local) ou não tem (Lambda, Fargate). Não existe "TUI com degradação" nem "TUI remoto via SSH" que seja razoável para esta POC; qualquer tentativa de alocar um PTY no container Fargate e tunelar via ECS Exec seria mais complexidade do que simplesmente usar o SDK. A divisão é limpa: TUI para a fase de exploração e validação local, SDK ou RPC para a fase de produção headless.
+
+Para a POC descrita neste livro, o fluxo prático é: (1) use o TUI para entender o comportamento do agente, afinar o system prompt, e validar as tools que vão entrar no handler; (2) descarte o TUI completamente quando começar a construir o handler Lambda ou Fargate — o `05-o-subset-que-importa-para-a-poc-headless/` vai formalizar exatamente quais superfícies (SDK e RPC) substituem o TUI nesse contexto, e por que cada uma delas não depende de TTY.
+
+**Fontes utilizadas:**
+
+- [Pi Coding Agent — README oficial (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)
+- [What I learned building an opinionated and minimal coding agent — Mario Zechner](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
+- [Session Management and Persistence — DeepWiki agentic-dev-io/pi-agent](https://deepwiki.com/agentic-dev-io/pi-agent/2.4-session-management-and-persistence)
+- [pi.dev — site oficial](https://pi.dev/)
+
+> _Pendente: 6 / 6 conceitos preenchidos._
 
 ---
 
