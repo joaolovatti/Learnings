@@ -16,6 +16,18 @@ O subcapítulo cobre: (1) **`createAgentSession`** — a factory function centra
 
 Ao terminar este subcapítulo, o leitor conseguirá escrever um handler Node.js/TypeScript mínimo que embeda o pi.dev via SDK — instanciando sessão, enviando um turno, e consumindo os eventos de resposta — e saberá quais classes e parâmetros são obrigatórios versus opcionais para o cenário da POC. Esse domínio é o insumo direto para o capítulo 5, que compara lado a lado esse modelo de embedding com o wrapping de processo RPC.
 
+## Conceitos
+
+A explicação completa destes conceitos vive em [`CONCEPTS.md`](CONCEPTS.md), construída sequencialmente pela skill `estudo-explicar-conceito`.
+
+1. O SDK como biblioteca embedável — sem spawn de processo — a diferença fundamental entre importar `@mariozechner/pi-coding-agent` e invocar o processo CLI, e o que desaparece quando não há subprocesso
+2. `createAgentSession` — a factory central e seus quatro parâmetros — `sessionManager`, `modelRegistry`, `authStorage`, `resourceLoader`: o que cada um faz, quais são obrigatórios, e o que a factory retorna
+3. `AgentSession` e o método `prompt()` — enviando turnos e acumulando contexto — o objeto retornado, como `prompt(text)` funciona como `Promise<void>`, e o que significa que o contexto acumula em memória entre chamadas
+4. `SessionManager` — os cinco modos de abertura e o que cada um implica para persistência — `inMemory()`, `create()`, `open()`, `continueRecent()`, `forkFrom()`, e onde o SessionManager customizado backed por S3 se encaixa
+5. `ModelRegistry` e `AuthStorage` sem home directory — como o SDK resolve credenciais de modelo e autenticação, e o que muda em Lambda (`setRuntimeApiKey`, `inMemory()` para registry, caminho customizado de auth)
+6. Loop de eventos via `subscribe()` — o que chega e como consumir — como o SDK emite `AgentSessionEvent` via subscribe/listener (não via readline de stdout), os tipos relevantes para o handler mínimo (`text_delta`, `tool_execution_*`, `agent_end`)
+7. `ResourceLoader` — o que pode ser omitido no handler mínimo da POC — como extensions/skills/templates são carregados, o que acontece se `resourceLoader` for omitido em `createAgentSession`, e o que um handler básico pode ignorar sem quebrar
+
 ## Fontes utilizadas
 
 - [SDK Mode — docs/sdk.md (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/sdk.md)

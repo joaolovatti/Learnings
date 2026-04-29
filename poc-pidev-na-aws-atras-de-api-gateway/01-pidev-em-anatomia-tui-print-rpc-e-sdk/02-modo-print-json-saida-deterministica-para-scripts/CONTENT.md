@@ -16,6 +16,17 @@ O subcapítulo cobre: (1) **invocação do modo Print** — a flag `-p "prompt"`
 
 Ao terminar este subcapítulo, o leitor conseguirá invocar pi.dev em modo Print e JSON, entenderá o formato dos eventos emitidos em `--mode json` (e reconhecerá esses tipos de evento quando eles reaparecerem no modo RPC), e saberá articular por que a limitação de sessão única descarta esse modo para qualquer endpoint de conversação multi-turno como o que a POC expõe.
 
+## Conceitos
+
+A explicação completa destes conceitos vive em [`CONCEPTS.md`](CONCEPTS.md), construída sequencialmente pela skill `estudo-explicar-conceito`.
+
+1. Invocação do modo Print — a flag `-p` e `--mode print`, o ciclo de vida do processo (inicia, processa, imprime, sai), e o que é escrito no stdout versus no stderr
+2. O modo JSON como event stream JSONL — `--mode json` como saída única no stdout, o cabeçalho de sessão como primeira linha, e a convenção de framing LF-delimitado
+3. Tipos de eventos emitidos em `--mode json` — agent/turn/message lifecycle events, tool execution events, queue_update e compaction: estrutura de cada tipo e sequência de emissão
+4. Limitação de sessão única — por que cada invocação começa um contexto do zero, o que isso impede para conversas com memória entre turnos, e o contraste com o contrato que a POC precisa honrar
+5. Uso legítimo em pipe e scripts — integração com `jq`, piped stdin (`cat | pi -p`), e os casos concretos onde a limitação de sessão não é obstáculo
+6. Print/JSON como rampa de entrada para RPC — como os tipos de evento visíveis em `--mode json` reaparecem no modo RPC e por que entender essa estrutura aqui reduz a curva do subcapítulo seguinte
+
 ## Fontes utilizadas
 
 - [Pi Coding Agent — README oficial (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)

@@ -16,6 +16,16 @@ O subcapítulo cobre: (1) **eliminação de TUI** — o argumento técnico compl
 
 Ao terminar este subcapítulo — e com ele o capítulo inteiro — o leitor conseguirá articular por que a POC headless descarta TUI e Print com argumentos técnicos precisos, saberá identificar o conjunto mínimo de flags, classes e eventos de RPC e SDK que entram no handler, e estará pronto para avaliar os trade-offs de capítulos 4 e 5 com base em raciocínio próprio, não em receita.
 
+## Conceitos
+
+A explicação completa destes conceitos vive em [`CONCEPTS.md`](CONCEPTS.md), construída sequencialmente pela skill `estudo-explicar-conceito`.
+
+1. Por que o TUI é descartado tecnicamente — ausência de TTY em Lambda/Fargate, o crash ou hang no harness como consequência direta, e por que não existe workaround viável para POC de produção
+2. Por que o Print/JSON é descartado tecnicamente — sessão única por invocação vs exigência de múltiplos turnos com contexto preservado, e por que mesmo `--mode json` não resolve o problema de estado
+3. O subset de RPC que entra no handler da POC — a flag `--mode rpc`, os tipos de evento que o handler precisa consumir (`text_delta`, `status`, `tool_call` com aprovação automática), e o que pode ser ignorado neste momento
+4. O subset de SDK que entra no handler da POC — as classes mínimas (`createAgentSession`, `SessionManager`, `AuthStorage`, `ModelRegistry`), parâmetros obrigatórios vs opcionais, e os eventos do loop mínimo
+5. O gancho para os capítulos 4 e 5 — como esse corte alimenta a decisão Lambda vs Fargate e a comparação SDK vs RPC no handler, com o que cada modo implica para o runtime de hosting
+
 ## Fontes utilizadas
 
 - [Pi Coding Agent — README oficial (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)

@@ -16,6 +16,18 @@ O subcapítulo cobre: (1) **framing JSONL** — delimitação obrigatória por L
 
 Ao terminar este subcapítulo, o leitor conseguirá implementar um cliente RPC básico em Node.js — enviando prompts via stdin e processando eventos do stdout — e saberá diagnosticar os erros de framing mais comuns. Entenderá o ciclo de vida do processo RPC o suficiente para avaliar, no capítulo 5, quando wrapping de processo RPC é preferível ao SDK embedado, e quando não é.
 
+## Conceitos
+
+A explicação completa destes conceitos vive em [`CONCEPTS.md`](CONCEPTS.md), construída sequencialmente pela skill `estudo-explicar-conceito`.
+
+1. O que é o modo RPC e como invocá-lo — a flag `--mode rpc`, o que muda em relação ao Print/JSON (processo persistente, stdin ativo, stdout como stream de eventos contínuos), e por que esse modelo é adequado para hosting de longa vida
+2. Framing JSONL estrito — LF (`\n`) como único delimitador de registro, por que `\r\n` deve ser normalizado antes do parse, e o contrato que o servidor exige do cliente ao escrever comandos no stdin
+3. A armadilha do `readline` do Node.js — como U+2028 e U+2029 (Unicode Line/Paragraph Separators) corrompem o framing quando se usa o módulo nativo `readline`, e qual alternativa de parsing é correta para clientes RPC
+4. Tipos de eventos emitidos no stdout — agent/turn/message lifecycle events, streaming deltas (`text_delta`, `thinking_delta`, `toolcall_delta`), tool execution events (`tool_execution_start`, `tool_execution_update`, `tool_execution_end`), e eventos de sistema (`queue_update`, `compaction_start`/`end`, `auto_retry_start`/`end`)
+5. Request/response correlation com o campo `id` — como o campo `id` opcional em cada comando faz o response espelhar o mesmo identificador, por que a correlação é necessária quando múltiplos comandos podem estar em flight, e o formato do objeto response (`type`, `command`, `success`, `error`, `data`, `id`)
+6. Ciclo de vida do processo entre turnos — como o processo RPC persiste entre invocações do agente, como o caller envia o próximo turno via stdin sem reiniciar o processo, e como detectar e tratar a morte inesperada do processo
+7. Aprovação de tool calls — o sub-protocolo de `extension_ui_request`/`extension_ui_response` para métodos de diálogo (`select`, `confirm`, `input`), a diferença entre métodos bloqueantes (que esperam response) e fire-and-forget (`notify`, `setStatus`), e a relevância desse mecanismo para ambientes controlados
+
 ## Fontes utilizadas
 
 - [RPC Mode — docs/rpc.md (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/rpc.md)
