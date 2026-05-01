@@ -16,6 +16,15 @@ O capítulo cobre: (1) **formato JSONL linha a linha** — anatomia de uma entra
 
 Ao terminar este capítulo, o leitor saberá ler e interpretar um arquivo de sessão JSONL do pi.dev, entenderá a diferença entre um trunk e um branch, saberá o que acontece no arquivo durante um fork, e conseguirá avaliar com precisão as restrições que essa estrutura impõe sobre qualquer mecanismo de persistência externo (EFS ou S3). Esse entendimento é pré-requisito direto para os capítulos 8 e 9.
 
+## Subcapítulos
+
+1. [Anatomia de uma Entrada JSONL](01-anatomia-de-uma-entrada-jsonl/CONTENT.md) — campos do SessionHeader e SessionMessageEntry, roles possíveis e o comportamento append-only de escrita
+2. [A Árvore de Sessão — DAG, Trunk e Branches](02-a-arvore-de-sessao-dag-trunk-e-branches/CONTENT.md) — como parentId transforma o arquivo num grafo dirigido acíclico, o conceito de leaf ativa, e a coexistência de branches no mesmo arquivo físico
+3. [Entradas Especiais — Compaction, BranchSummary e Labels](03-entradas-especiais-compaction-branchsummary-e-labels/CONTENT.md) — CompactionEntry com firstKeptEntryId, BranchSummaryEntry gerada ao trocar de branch, labels como bookmarks, e a distinção entre custom e custom_message
+4. [Fork e Branch na Prática — Criar e Navegar](04-fork-e-branch-na-pratica-criar-e-navegar/CONTENT.md) — o que acontece no arquivo JSONL durante um branch (mesmo arquivo) e durante um fork (novo arquivo com parentSession), e como invocar as operações via TUI e SDK
+5. [Append-Only Como Contrato de Persistência — EFS vs S3](05-append-only-como-contrato-de-persistencia-efs-vs-s3/CONTENT.md) — restrições que o contrato append-only impõe sobre EFS (append nativo, atômico) e S3 (sem append nativo, tensão com consistência eventual) e implicações de read-after-write
+6. [Operações Proibidas e Restrições de Integridade](06-operacoes-proibidas-e-restricoes-de-integridade/CONTENT.md) — editar no meio, truncar, reordenar, colisão de id em forks concorrentes, e o sistema de migração de versão v1→v2→v3
+
 ## Fontes utilizadas
 
 - [Pi session format — docs/session.md (badlogic/pi-mono)](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)

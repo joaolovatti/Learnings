@@ -16,6 +16,15 @@ O capítulo cobre: (1) **skills embutidas** — lista das skills nativas do pi.d
 
 Ao terminar este capítulo, o leitor terá um inventário claro do que o agente vai poder fazer dentro da POC — nem mais nem menos — e saberá mapear cada tool para suas dependências de runtime (filesystem, rede, IAM). Esse inventário é o input direto para as decisões de IAM e networking que aparecem nos capítulos 4, 6 e 7.
 
+## Subcapítulos
+
+1. [As Sete Tools Nativas](01-as-sete-tools-nativas/CONTENT.md) — read, write, edit, bash, grep, find, ls: o que cada uma faz, como o LLM as invoca, e as flags que controlam o conjunto ativo
+2. [O Sistema de Extensions — Protocolo e Ciclo de Vida](02-o-sistema-de-extensions-protocolo-e-ciclo-de-vida/CONTENT.md) — carregamento de módulos TypeScript, a sequência tool_execution_start → tool_call → execute → tool_result → tool_execution_end, e o contrato de ExtensionAPI
+3. [Custom Tools via SDK — registerTool e customTools](03-custom-tools-via-sdk-registertool-e-customtools/CONTENT.md) — diferença entre extensions em disco e customTools passados programaticamente ao criar uma sessão SDK, e implicações para agente embedded em Lambda
+4. [MCP: Por Que Pi.dev Não Adota e o Que Fazer Quando Você Precisa](04-mcp-por-que-pidev-nao-adota-e-o-que-fazer/CONTENT.md) — a decisão de design (overhead de contexto), o pi-mcp-adapter como válvula de escape, e implicações práticas para a POC
+5. [Filtro para a POC — O Que Entra e O Que Fica Fora](05-filtro-para-a-poc-o-que-entra-e-o-que-fica-fora/CONTENT.md) — skill por skill: bash sem shell persistente, read/write sobre EFS ou /tmp, find/grep aceitáveis, web tools problemáticas; critério de corte headless-Lambda
+6. [Mapa de IAM — Permissões por Tool que Entra na POC](06-mapa-de-iam-permissoes-por-tool-que-entra-na-poc/CONTENT.md) — o que cada tool aprovada exige do execution role e como esse mapa alimenta os capítulos 4, 6 e 7
+
 ## Fontes utilizadas
 
 - [Pi Coding Agent — README oficial, seção de skills e extensions](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md)
